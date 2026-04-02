@@ -19,5 +19,5 @@
 **Objective**: Implement user login and registration flows. Setup authentication tokens and session management. Develop the user profile section.
 
 ### Phase 3: SwiftCare API Integration
-**Status**: ⬜ Not Started
+**Status**: ✅ Complete
 **Objective**: Connect the application to the SwiftCare backend API. Implement data models and network clients. Verify communication and handle errors/loading states.

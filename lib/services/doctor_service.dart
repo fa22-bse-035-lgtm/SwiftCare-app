@@ -1,30 +1,63 @@
-import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:swiftcare/services/api_service.dart';
 
 class DoctorService {
-  static const String baseUrl = ApiService.baseUrl;
-
-  static Future<void> startShift(String doctorId) async {
-    await http.post(
-      Uri.parse("$baseUrl/api/queue/start-shift/$doctorId"),
+  
+  /// Starts a shift using the shiftId corresponding to the backend Queue API.
+  static Future<void> startShift(String shiftId) async {
+    final res = await ApiService().request(
+      '/queue/start-shift',
+      method: 'POST',
+      body: {"shiftId": shiftId},
+      requiresAuth: true,
     );
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      throw Exception(jsonDecode(res.body)['error'] ?? 'Failed to start shift');
+    }
   }
 
-  static Future<void> endShift(String doctorId) async {
-    await http.post(
-      Uri.parse("$baseUrl/api/queue/end-shift/$doctorId"),
+  /// Ends a shift.
+  static Future<void> endShift(String shiftId) async {
+    final res = await ApiService().request(
+      '/queue/end-shift',
+      method: 'POST',
+      body: {"shiftId": shiftId},
+      requiresAuth: true,
     );
+    if (res.statusCode != 200) {
+      throw Exception(jsonDecode(res.body)['error'] ?? 'Failed to end shift');
+    }
   }
 
-  static Future<void> callNext(String doctorId) async {
-    await http.post(
-      Uri.parse("$baseUrl/api/queue/call-next/$doctorId"),
+  /// Calls the next patient in the queue.
+  static Future<void> callNext(String shiftId) async {
+    final res = await ApiService().request(
+      '/queue/next',
+      method: 'POST',
+      body: {"shiftId": shiftId},
+      requiresAuth: true,
     );
+    if (res.statusCode != 200) {
+      throw Exception(jsonDecode(res.body)['error'] ?? 'Failed to call next patient');
+    }
   }
 
-  static Future<void> completeConsultation(String appointmentId) async {
-    await http.post(
-      Uri.parse("$baseUrl/api/appointments/complete/$appointmentId"),
+  /// Completes a consultation (updates appointment status).
+  static Future<void> completeConsultation(String appointmentId, {String? notes}) async {
+    final body = {
+      "status": "Completed",
+      if (notes != null) "consultationNotes": notes,
+    };
+    
+    final res = await ApiService().request(
+      '/appointments/$appointmentId/status',
+      method: 'PUT',
+      body: body,
+      requiresAuth: true,
     );
+    
+    if (res.statusCode != 200) {
+      throw Exception(jsonDecode(res.body)['error'] ?? 'Failed to complete consultation');
+    }
   }
 }

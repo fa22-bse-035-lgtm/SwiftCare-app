@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:swiftcare/services/api_service.dart';
 
 class GeminiTestChatScreen extends StatefulWidget {
   const GeminiTestChatScreen({super.key});
@@ -10,10 +10,6 @@ class GeminiTestChatScreen extends StatefulWidget {
 }
 
 class _GeminiTestChatScreenState extends State<GeminiTestChatScreen> {
-  // CHANGE THIS
-  static const String apiUrl =
-      'http://localhost:3000/chatbot/chat';
-
   final TextEditingController _controller = TextEditingController();
   final List<_ChatMessage> _messages = [];
   bool _isLoading = false;
@@ -29,12 +25,11 @@ class _GeminiTestChatScreenState extends State<GeminiTestChatScreen> {
     });
 
     try {
-      final res = await http.post(
-        Uri.parse(apiUrl),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({'message': text}),
+      final res = await ApiService().request(
+        '/chatbot/chat',
+        method: 'POST',
+        body: {'message': text},
+        requiresAuth: true,
       );
 
       if (res.statusCode == 200) {

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:http/http.dart' as http;
 import 'package:swiftcare/services/api_service.dart';
 import 'package:swiftcare/services/colors.dart';
 import 'dart:convert';
@@ -36,12 +35,11 @@ class _PaymentButtonState extends State<PaymentButton> {
     try {
       setState(() => loading = true);
 
-      String baseUrl = ApiService.baseUrl;
-
-      final response = await http.post(
-        Uri.parse("$baseUrl/payment/create-intent"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"amount": widget.amount}),
+      final response = await ApiService().request(
+        '/payment/create-intent',
+        method: 'POST',
+        body: {"amount": widget.amount},
+        requiresAuth: true,
       );
 
       final data = jsonDecode(response.body);
@@ -59,11 +57,13 @@ class _PaymentButtonState extends State<PaymentButton> {
       widget.onSuccess();
     } catch (e) {
       print("Stripe Error: $e");
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Payment Failed")));
+      if(mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Payment Failed")));
+      }
     } finally {
-      setState(() => loading = false);
+      if(mounted) setState(() => loading = false);
     }
   }
 

@@ -1,17 +1,21 @@
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:swiftcare/services/api_service.dart';
+import 'package:swiftcare/services/shared_resource.dart';
 
 class SocketService {
   late IO.Socket socket;
 
   String baseUrl = ApiService.baseUrl;
 
-  void connect() {
+  Future<void> connect() async {
+    final token = await SharedResources().getAccessToken();
+
     socket = IO.io(
       baseUrl,
       IO.OptionBuilder()
           .setTransports(['websocket'])
           .disableAutoConnect()
+          .setAuth({'token': token})
           .build(),
     );
 
