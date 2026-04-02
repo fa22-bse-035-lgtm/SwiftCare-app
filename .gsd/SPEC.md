@@ -1,6 +1,6 @@
 # SPEC.md — Project Specification
 
-> **Status**: `DRAFT`
+> **Status**: `FINALIZED`
 
 ## Vision
 SwiftCare is a Flutter-based mobile application built with standard modern clean architecture. It aims to provide fast, reliable, and real-time medical or emergency-related services with integrated mapping, location tracking, and payment processing.
