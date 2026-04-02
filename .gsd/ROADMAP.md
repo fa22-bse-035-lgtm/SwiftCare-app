@@ -1,33 +1,23 @@
 # ROADMAP.md
 
-> **Current Phase**: Not started
-> **Milestone**: v1.0
+> **Current Milestone**: MVP Core
+> **Goal**: Establish the base functionality to connect patients and doctors with queue tracking, AI help, and booking.
 
 ## Must-Haves
-- [ ] Clean Architecture scaffolding
-- [ ] Authentication via Google Sign In
-- [ ] Live tracking map integration via Google Maps
-- [ ] Real-time communication via Socket.io
-- [ ] Payment processing via Stripe
+- [ ] Working architecture, state management, and shared resources
+- [ ] Safe and secure authentication for patients and doctors
+- [ ] Core integration with the Node.js SwiftCare backend
 
 ## Phases
 
-### Phase 1: Foundation & Scaffold Setup
-**Status**: ⬜ Not Started
-**Objective**: Setup Clean Architecture layers (Domain, Data, Presentation), state management (Provider), and dependency injection.
+### Phase 1: Core Architecture & Shared Resources
+**Status**: ✅ Complete
+**Objective**: Establish the base architecture for the Flutter app. Set up state management, routing, and shared resources.
 
-### Phase 2: Authentication
+### Phase 2: Authentication & User Profiles
 **Status**: ⬜ Not Started
-**Objective**: Implement Google Sign In and local secure storage for session management.
+**Objective**: Implement user login and registration flows. Setup authentication tokens and session management. Develop the user profile section.
 
-### Phase 3: Live Maps & Tracking
+### Phase 3: SwiftCare API Integration
 **Status**: ⬜ Not Started
-**Objective**: Integrate Google Maps and Geolocator for live tracking of providers and users.
-
-### Phase 4: Real-Time Communication
-**Status**: ⬜ Not Started
-**Objective**: Setup Socket.io client for real-time order updates and chat between users and providers.
-
-### Phase 5: Payments
-**Status**: ⬜ Not Started
-**Objective**: Integrate Flutter Stripe for secure payment processing.
+**Objective**: Connect the application to the SwiftCare backend API. Implement data models and network clients. Verify communication and handle errors/loading states.

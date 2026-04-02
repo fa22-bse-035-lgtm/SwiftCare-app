@@ -1,0 +1,35 @@
+name: swiftcare
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.10.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  http: ^1.6.0
+  intl: ^0.20.2
+  uicons: ^1.0.1
+  provider: ^6.1.5+1
+  geolocator: ^14.0.2
+  url_launcher: ^6.3.2
+  google_fonts: ^6.3.2
+  google_sign_in: ^7.2.0
+  flutter_stripe: ^12.2.0
+  socket_io_client: ^3.1.4
+  water_drop_nav_bar: ^2.2.2
+  google_maps_flutter: ^2.14.2
+  flutter_secure_storage: ^10.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
