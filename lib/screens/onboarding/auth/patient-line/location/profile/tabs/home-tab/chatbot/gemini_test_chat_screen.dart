@@ -105,6 +105,12 @@ class _GeminiTestChatScreenState extends State<GeminiTestChatScreen> {
       ),
     );
   }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 }
 
 class _ChatMessage extends StatelessWidget {
@@ -112,30 +118,26 @@ class _ChatMessage extends StatelessWidget {
   final bool isUser;
   final bool isError;
 
-  const _ChatMessage(
-    this.text,
-    this.isUser, {
-    this.isError = false,
-  });
+  const _ChatMessage(this.text, this.isUser, {this.isError = false});
 
   @override
   Widget build(BuildContext context) {
     final bgColor = isError
         ? Colors.red.shade200
         : isUser
-            ? Colors.blue.shade200
-            : Colors.grey.shade300;
+        ? Colors.blue.shade200
+        : Colors.grey.shade300;
 
-    final align =
-        isUser ? Alignment.centerRight : Alignment.centerLeft;
+    final align = isUser ? Alignment.centerRight : Alignment.centerLeft;
 
     return Container(
       alignment: align,
       margin: const EdgeInsets.symmetric(vertical: 6),
       child: Container(
         padding: const EdgeInsets.all(12),
-        constraints:
-            BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.75,
+        ),
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(12),

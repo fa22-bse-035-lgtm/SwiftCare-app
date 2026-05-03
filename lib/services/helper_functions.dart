@@ -1,3 +1,6 @@
+import 'package:swiftcare/models/doctor_model.dart';
+import 'package:swiftcare/models/patient_model.dart';
+import 'package:swiftcare/models/review_model.dart';
 import 'package:swiftcare/services/shared_resource.dart';
 
 class HelperFunctions {
@@ -6,71 +9,47 @@ class HelperFunctions {
   static final HelperFunctions _instance = HelperFunctions._internal();
   factory HelperFunctions() => _instance;
 
-  Future<List<dynamic>> getdoctorReviews(String id) async {
-    List<dynamic> reviews = SharedResources.reviews.value;
-    List<dynamic> docReviews = [];
-    for (var r in reviews) {
-      if (r["doctorId"] == id) {
-        docReviews.add(r);
-      }
-    }
-    return docReviews;
+  Future<List<Review>> getdoctorReviews(String id) async {
+    List<Review> reviews = SharedResources.reviews.value;
+    return reviews.where((r) => r.doctorId == id).toList();
   }
 
   double reviewsNumber(String id) {
-    List<dynamic> reviews = SharedResources.reviews.value;
-    return reviews.where((r) => r["doctorId"] == id).length.toDouble();
+    return SharedResources.reviews.value.where((r) => r.doctorId == id).length.toDouble();
   }
 
   double calculateRating(String id) {
-    double total = 0;
-    List<dynamic> reviews = SharedResources.reviews.value;
+    List<Review> docReviews = SharedResources.reviews.value.where((r) => r.doctorId == id).toList();
+    if (docReviews.isEmpty) return 0.0;
 
-    for (var r in reviews) {
-      if (r["doctorId"] == id) {
-        // FIX: safely convert string or num to double
-        final raw = r["rating"];
-
-        double value;
-
-        if (raw is num) {
-          value = raw.toDouble();
-        } else if (raw is String) {
-          value = double.tryParse(raw) ?? 0.0;
-        } else {
-          value = 0.0;
-        }
-
-        total += value;
-      }
-    }
-
-    return total;
+    double total = docReviews.fold(0.0, (sum, r) => sum + r.rating);
+    return total / docReviews.length;
   }
 
   void getFavoriteDoctors() {
     final String? patientId = SharedResources.userData.value['_id'];
+    if (patientId == null) return;
 
-    final patient = SharedResources.patients.value.firstWhere(
-      (p) => p is Map && p['_id'] == patientId,
-      orElse: () => SharedResources.userData.value,
-    );
+    // Find the patient in the typed list
+    final List<Patient> patients = SharedResources.patients.value;
+    Patient? patient;
+    try {
+      patient = patients.firstWhere((p) => p.id == patientId);
+    } catch (_) {
+      // If not in the list, maybe it's just the current user
+      // For now, if we can't find it in the list, we don't update favorites
+      return;
+    }
 
-    final List<dynamic> favorites = (patient as Map)['favorites'] ?? [];
-
-    SharedResources.favorites.value = favorites
-        .map<String>((id) => id.toString())
-        .toList();
+    SharedResources.favorites.value = List<String>.from(patient.favorites);
   }
 
-  Map<String, dynamic> getDoctorById(String doctorId) {
-    final doctors = SharedResources.doctors.value;
-    Map<String, dynamic> doc = {};
+  Doctor? getDoctorById(String doctorId) {
     try {
-      return doctors.firstWhere((doc) => doc["_id"].toString() == doctorId);
+      return SharedResources.doctors.value.firstWhere((doc) => doc.id == doctorId);
     } catch (e) {
-      print("Doctor not found");
-      return doc;
+      print("Doctor not found: $doctorId");
+      return null;
     }
   }
 }

@@ -1,53 +1,73 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:swiftcare/models/appointment_model.dart';
+import 'package:swiftcare/models/doctor_model.dart';
 import 'package:swiftcare/services/api_service.dart';
 import 'package:swiftcare/services/colors.dart';
 import 'package:swiftcare/services/shared_resource.dart';
+import 'package:swiftcare/utils/app_config.dart';
 import 'package:swiftcare/widgets/app_bar.dart';
 import 'package:swiftcare/widgets/payment_button.dart';
 import 'level-5/payment_success.dart';
 
 class ReviewSummary extends StatelessWidget {
   final Map<String, dynamic> appointment;
-  final Map<String, dynamic> doc;
+  final Doctor doctor;
 
   const ReviewSummary({
     super.key,
     required this.appointment,
-    required this.doc,
+    required this.doctor,
   });
 
   @override
   Widget build(BuildContext context) {
+    String imagePath = doctor.image;
+    String imageUrl = AppConfig.getImageUrl(imagePath);
+
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
 
-      appBar: CustomAppBar(title: "Review Summary", color: true),
+      appBar: const CustomAppBar(title: "Review Summary", color: true),
 
       body: SingleChildScrollView(
         padding: const EdgeInsets.only(left: 25, right: 25),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
 
             // -------------------- DOCTOR PROFILE --------------------
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // IMAGE
-                Container(
-                  height: 80,
-                  width: 80,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    image: DecorationImage(
-                      image: AssetImage(doc["image"]), // dynamic
-                      fit: BoxFit.cover,
-                    ),
-                  ),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(40),
+                  child: imagePath.startsWith('assets') 
+                      ? Image.asset(
+                          imagePath,
+                          height: 80,
+                          width: 80,
+                          fit: BoxFit.cover,
+                        )
+                      : FadeInImage.assetNetwork(
+                          placeholder: 'assets/images/Jane.jpg',
+                          image: imageUrl,
+                          height: 80,
+                          width: 80,
+                          fit: BoxFit.cover,
+                          imageErrorBuilder: (context, error, stackTrace) {
+                            return Image.asset(
+                              'assets/images/Jane.jpg',
+                              height: 80,
+                              width: 80,
+                              fit: BoxFit.cover,
+                            );
+                          },
+                        ),
                 ),
-                SizedBox(width: 14),
+                const SizedBox(width: 14),
 
                 // NAME / SPECIALIZATION / LOCATION
                 Expanded(
@@ -55,34 +75,34 @@ class ReviewSummary extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        doc["name"],
+                        doctor.name,
                         style: GoogleFonts.poppins(
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      SizedBox(height: 6),
+                      const SizedBox(height: 6),
 
                       Text(
-                        doc["specialization"],
+                        doctor.specialization,
                         style: GoogleFonts.poppins(
                           fontSize: 13,
                           color: Colors.black54,
                         ),
                       ),
-                      SizedBox(height: 6),
+                      const SizedBox(height: 6),
 
                       Row(
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.location_on,
                             color: AppColors.primaryColor,
                             size: 16,
                           ),
-                          SizedBox(width: 4),
+                          const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              doc["location"],
+                              doctor.location.label,
                               style: GoogleFonts.poppins(
                                 fontSize: 12,
                                 color: Colors.black54,
@@ -97,9 +117,9 @@ class ReviewSummary extends StatelessWidget {
               ],
             ),
 
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             Divider(color: AppColors.divider),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
 
             // -------------------- APPOINTMENT DETAILS --------------------
             buildRow(
@@ -135,15 +155,29 @@ class ReviewSummary extends StatelessWidget {
           onSuccess: () async {
             bool status = await ApiService().createAppointment(appointment);
             if (status == true) {
+              // Create Appointment model from the map and add it to SharedResources
+              final newAppt = Appointment(
+                  id: "temp_${DateTime.now().millisecondsSinceEpoch}",
+                  patientId: appointment["patientId"],
+                  doctorId: appointment["doctorId"],
+                  doctorName: appointment["doctorName"],
+                  date: appointment["date"],
+                  time: appointment["time"],
+                  status: "Scheduled",
+                  consultationNotes: appointment["consultationNotes"],
+                  amount: appointment["amount"],
+              );
+
               SharedResources.appointments.value = [
                 ...SharedResources.appointments.value,
-                appointment,
+                newAppt,
               ];
+              
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) =>
-                      PaymentSuccess(doc: doc, appointment: appointment),
+                      PaymentSuccess(doctor: doctor, appointment: appointment),
                 ),
               );
             } else {

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:collection/collection.dart';
+import 'package:swiftcare/models/appointment_model.dart';
+import 'package:swiftcare/models/doctor_model.dart';
 import 'package:swiftcare/screens/onboarding/auth/patient-line/location/profile/tabs/bookings-tab/appointment-details/booking_details.dart';
 import 'package:swiftcare/services/colors.dart';
-import 'package:swiftcare/services/helper_functions.dart';
 import 'package:swiftcare/services/shared_resource.dart';
+import 'package:swiftcare/utils/app_config.dart';
 
 class BookingTab extends StatefulWidget {
   const BookingTab({super.key});
@@ -71,26 +74,54 @@ class _BookingTabState extends State<BookingTab>
       body: TabBarView(
         controller: tabController,
         children: [
-          ValueListenableBuilder<List<dynamic>>(
+          ValueListenableBuilder<List<Appointment>>(
             valueListenable: SharedResources.appointments,
             builder: (context, appointments, _) {
-              return _upcomingBookings(appointments);
+              return _bookingsList(appointments, "Upcoming");
             },
           ),
-          const Center(child: Text("No completed bookings")),
-          const Center(child: Text("No cancelled bookings")),
+          ValueListenableBuilder<List<Appointment>>(
+            valueListenable: SharedResources.appointments,
+            builder: (context, appointments, _) {
+              return _bookingsList(appointments, "Completed");
+            },
+          ),
+          ValueListenableBuilder<List<Appointment>>(
+            valueListenable: SharedResources.appointments,
+            builder: (context, appointments, _) {
+              return _bookingsList(appointments, "Cancelled");
+            },
+          ),
         ],
       ),
     );
   }
 
-  // UPCOMING BOOKINGS LIST
-  Widget _upcomingBookings(List<dynamic> data) {
-    // appointments list coming from API
-    final List<dynamic> appts = data;
+  // BOOKINGS LIST BUILDER
+  Widget _bookingsList(List<Appointment> data, String type) {
+    final String? patientId = SharedResources.userData.value['_id'];
+    List<Appointment> appts;
+
+    if (type == "Upcoming") {
+      appts = data
+          .where((a) =>
+              a.patientId == patientId &&
+              a.status != "Completed" &&
+              a.status != "Cancelled")
+          .toList();
+    } else if (type == "Completed") {
+      appts = data
+          .where((a) => a.patientId == patientId && a.status == "Completed")
+          .toList();
+    } else {
+      // Cancelled
+      appts = data
+          .where((a) => a.patientId == patientId && a.status == "Cancelled")
+          .toList();
+    }
 
     if (appts.isEmpty) {
-      return const Center(child: Text("No upcoming bookings"));
+      return Center(child: Text("No $type bookings"));
     }
 
     return ListView.builder(
@@ -98,16 +129,21 @@ class _BookingTabState extends State<BookingTab>
       itemCount: appts.length,
       itemBuilder: (context, index) {
         final appt = appts[index];
+        final doctor = SharedResources.doctors.value
+            .firstWhereOrNull((d) => d.id == appt.doctorId);
 
         return bookingCard(
-          date: "${appt["date"]} - ${appt["time"]}",
-          doctorId: appt["doctorId"] ?? "null",
-          doctorName: appt["doctorName"] ?? "Unknown Doctor",
-          location: "Clinic", // because API does not send clinic location
-          // bookingId: "#${appt["_id"]}",
-          bookingId: "SC-Fa2324",
-          doctorImage: "assets/images/Jane.jpg", // image from assets
+          context: context,
+          date: "${appt.date} | ${appt.time}",
+          doctorId: appt.doctorId,
+          doctorName: doctor?.name ?? "Unknown Doctor",
+          location: doctor?.location.label ?? "Clinic",
+          bookingId: appt.id.length > 8
+              ? "SC-${appt.id.substring(appt.id.length - 6).toUpperCase()}"
+              : "SC-${appt.id.toUpperCase()}",
+          doctorImage: doctor?.image ?? "assets/images/Jane.jpg",
           appt: appt,
+          doctor: doctor,
         );
       },
     );
@@ -115,14 +151,18 @@ class _BookingTabState extends State<BookingTab>
 
   // BOOKING CARD WIDGET
   Widget bookingCard({
+    required BuildContext context,
     required String date,
     required String doctorId,
     required String doctorName,
     required String location,
     required String bookingId,
     required String doctorImage,
-    required dynamic appt,
+    required Appointment appt,
+    required Doctor? doctor,
   }) {
+    String imageUrl = AppConfig.getImageUrl(doctorImage);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 18),
       padding: const EdgeInsets.all(16),
@@ -160,12 +200,25 @@ class _BookingTabState extends State<BookingTab>
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
-                child: Image.asset(
-                  doctorImage,
-                  height: 70,
-                  width: 70,
-                  fit: BoxFit.cover,
-                ),
+                child: doctorImage.startsWith('assets')
+                    ? Image.asset(
+                        doctorImage,
+                        height: 70,
+                        width: 70,
+                        fit: BoxFit.cover,
+                      )
+                    : Image.network(
+                        imageUrl,
+                        height: 70,
+                        width: 70,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Image.asset(
+                          "assets/images/Jane.jpg",
+                          height: 70,
+                          width: 70,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
               ),
               const SizedBox(width: 12),
 
@@ -250,16 +303,15 @@ class _BookingTabState extends State<BookingTab>
                 ),
               ),
               onPressed: () {
-                Map<String, dynamic> doc = HelperFunctions().getDoctorById(
-                  doctorId,
-                );
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        AppointmentDetails(appointment: appt, doctor: doc),
-                  ),
-                );
+                if (doctor != null) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          AppointmentDetails(appointment: appt, doctor: doctor),
+                    ),
+                  );
+                }
               },
               child: const Text("View Appointment"),
             ),

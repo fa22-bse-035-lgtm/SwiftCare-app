@@ -34,8 +34,24 @@ class SocketService {
     socket.emit("joinQueueRoom", shiftId);
   }
 
+  void joinUserRoom(String userId) {
+    socket.emit("joinUserRoom", userId);
+  }
+
   void listenQueueUpdates(Function(dynamic) onUpdate) {
     socket.on("queueUpdated", (data) {
+      onUpdate(data);
+    });
+  }
+
+  void listenBookingUpdates(Function(dynamic) onUpdate) {
+    socket.on("bookingUpdated", (data) {
+      onUpdate(data);
+    });
+  }
+
+  void listenNotifications(Function(dynamic) onUpdate) {
+    socket.on("notification:new", (data) {
       onUpdate(data);
     });
   }

@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:swiftcare/models/appointment_model.dart';
+import 'package:swiftcare/models/doctor_model.dart';
+import 'package:swiftcare/models/patient_model.dart';
+import 'package:swiftcare/models/review_model.dart';
+import 'package:swiftcare/models/shift_model.dart';
 
 /// Single Source of Truth for the SwiftCare application.
 /// 
@@ -19,11 +24,12 @@ class SharedResources {
   static final ValueNotifier<Map<String, dynamic>> userData = ValueNotifier({});
 
   // ---------------- DATA ----------------
-  static final ValueNotifier<List<dynamic>> doctors = ValueNotifier([]);
-  static final ValueNotifier<List<dynamic>> patients = ValueNotifier([]);
+  static final ValueNotifier<List<Doctor>> doctors = ValueNotifier([]);
+  static final ValueNotifier<List<Patient>> patients = ValueNotifier([]);
   static final ValueNotifier<List<String>> favorites = ValueNotifier([]);
-  static final ValueNotifier<List<dynamic>> reviews = ValueNotifier([]);
-  static final ValueNotifier<List<dynamic>> appointments = ValueNotifier([]);
+  static final ValueNotifier<List<Review>> reviews = ValueNotifier([]);
+  static final ValueNotifier<List<Appointment>> appointments = ValueNotifier([]);
+  static final ValueNotifier<List<Shift>> shifts = ValueNotifier([]);
 
   // Keys
   static const String _keyUserId = 'userId';
@@ -47,6 +53,10 @@ class SharedResources {
 
   Future<void> saveAccessToken(String token) async {
     await _storage.write(key: _keyAccessToken, value: token);
+  }
+
+  Future<void> saveRefreshToken(String token) async {
+    await _storage.write(key: _keyRefreshToken, value: token);
   }
 
   // ---------------- READ ----------------

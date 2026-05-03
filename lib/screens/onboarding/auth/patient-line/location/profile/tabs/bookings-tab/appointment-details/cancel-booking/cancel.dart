@@ -139,4 +139,10 @@ class _CancelBookingScreenState extends State<CancelBookingScreen> {
       ),
     );
   }
+
+  @override
+  void dispose() {
+    otherCtrl.dispose();
+    super.dispose();
+  }
 }

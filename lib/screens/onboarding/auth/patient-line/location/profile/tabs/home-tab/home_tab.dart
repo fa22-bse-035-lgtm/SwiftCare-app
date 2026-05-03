@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:swiftcare/models/doctor_model.dart';
 import 'package:swiftcare/screens/onboarding/auth/patient-line/location/profile/tabs/home-tab/categories/categories.dart';
 import 'package:swiftcare/screens/onboarding/auth/patient-line/location/profile/tabs/home-tab/filter/filter.dart';
+import 'package:swiftcare/screens/onboarding/auth/patient-line/location/profile/tabs/home-tab/search/search.dart';
 import 'package:swiftcare/services/shared_resource.dart';
 import 'package:swiftcare/widgets/category_bars.dart';
 import 'package:swiftcare/widgets/doctors_list.dart';
@@ -9,7 +11,7 @@ import 'package:uicons/uicons.dart';
 import 'package:swiftcare/services/colors.dart';
 
 class HomeTab extends StatelessWidget {
-  HomeTab({super.key});
+  const HomeTab({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -25,34 +27,44 @@ class HomeTab extends StatelessWidget {
                 children: [
                   // Search Bar
                   Expanded(
-                    child: Container(
-                      height: 40,
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: const Color.fromARGB(255, 230, 230, 230),
+                    child: GestureDetector(
+                      onTap: () {
+                         Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SearchDoctors(),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        height: 40,
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: const Color.fromARGB(255, 230, 230, 230),
+                          ),
                         ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            UIcons.regularRounded.search,
-                            color: AppColors.primaryColor,
-                            size: 20,
-                          ),
-
-                          const SizedBox(width: 10),
-
-                          Text(
-                            "Search",
-                            style: GoogleFonts.poppins(
-                              color: Colors.grey[500],
-                              fontSize: 13,
+                        child: Row(
+                          children: [
+                            Icon(
+                              UIcons.regularRounded.search,
+                              color: AppColors.primaryColor,
+                              size: 20,
                             ),
-                          ),
-                        ],
+                      
+                            const SizedBox(width: 10),
+                      
+                            Text(
+                              "Search",
+                              style: GoogleFonts.poppins(
+                                color: Colors.grey[500],
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -126,7 +138,7 @@ class HomeTab extends StatelessWidget {
               const SizedBox(height: 10),
 
               // Category Bars
-              Row(
+              const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   Expanded(
@@ -190,7 +202,7 @@ class HomeTab extends StatelessWidget {
               ),
 
               // Doctor Cards — rebuilds automatically when doctors list changes
-              ValueListenableBuilder<List<dynamic>>(
+              ValueListenableBuilder<List<Doctor>>(
                 valueListenable: SharedResources.doctors,
                 builder: (context, doctors, _) {
                   return DoctorsList(doctors: doctors);

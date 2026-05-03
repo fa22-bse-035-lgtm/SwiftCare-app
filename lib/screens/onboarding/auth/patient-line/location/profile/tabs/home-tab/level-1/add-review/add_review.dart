@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:swiftcare/models/doctor_model.dart';
+import 'package:swiftcare/models/review_model.dart';
 import 'package:swiftcare/services/api_service.dart';
 import 'package:swiftcare/services/shared_resource.dart';
+import 'package:swiftcare/utils/app_config.dart';
 
 class AddDoctorReview extends StatefulWidget {
-  final Map<String, dynamic> doctor;
+  final Doctor doctor;
   const AddDoctorReview({super.key, required this.doctor});
 
   @override
@@ -16,7 +19,9 @@ class _AddDoctorReview extends State<AddDoctorReview> {
 
   @override
   Widget build(BuildContext context) {
-    String name = widget.doctor["name"];
+    String name = widget.doctor.name;
+    String imagePath = widget.doctor.image;
+    String imageUrl = AppConfig.getImageUrl(imagePath);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -39,8 +44,31 @@ class _AddDoctorReview extends State<AddDoctorReview> {
             const SizedBox(height: 10),
             CircleAvatar(
               radius: 55,
-              backgroundImage: AssetImage("assets/images/Jane.jpg"),
-              // replace with NetworkImage if needed
+              backgroundColor: Colors.grey[200],
+              child: ClipOval(
+                child: imagePath.startsWith('assets')
+                    ? Image.asset(
+                        imagePath,
+                        width: 110,
+                        height: 110,
+                        fit: BoxFit.cover,
+                      )
+                    : FadeInImage.assetNetwork(
+                        placeholder: 'assets/images/default_doctor.png',
+                        image: imageUrl,
+                        width: 110,
+                        height: 110,
+                        fit: BoxFit.cover,
+                        imageErrorBuilder: (context, error, stackTrace) {
+                          return Image.asset(
+                            'assets/images/default_doctor.png',
+                            width: 110,
+                            height: 110,
+                            fit: BoxFit.cover,
+                          );
+                        },
+                      ),
+              ),
             ),
             const SizedBox(height: 10),
 
@@ -49,20 +77,20 @@ class _AddDoctorReview extends State<AddDoctorReview> {
               children: [
                 Text(
                   name,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w600,
                     color: Colors.black,
                   ),
                 ),
-                SizedBox(width: 6),
-                Icon(Icons.verified, color: Colors.blue, size: 22),
+                const SizedBox(width: 6),
+                const Icon(Icons.verified, color: Colors.blue, size: 22),
               ],
             ),
 
-            const Text(
-              "Dentist",
-              style: TextStyle(color: Colors.grey, fontSize: 15),
+            Text(
+              widget.doctor.specialization,
+              style: const TextStyle(color: Colors.grey, fontSize: 15),
             ),
 
             const SizedBox(height: 25),
@@ -70,9 +98,9 @@ class _AddDoctorReview extends State<AddDoctorReview> {
             // ----------------- EXPERIENCE QUESTION -----------------
             Text(
               "How was your experience with\n$name?",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-              softWrap: true, // 👈 allows wrapping
-              overflow: TextOverflow.visible, // optional, but polite
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              softWrap: true,
+              overflow: TextOverflow.visible,
               textAlign: TextAlign.center,
             ),
 
@@ -155,7 +183,7 @@ class _AddDoctorReview extends State<AddDoctorReview> {
                 height: 55,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(30),
-                  gradient: LinearGradient(
+                  gradient: const LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [Color(0xFF0F68F4), Color(0xFF0B4FE3)],
@@ -187,15 +215,19 @@ class _AddDoctorReview extends State<AddDoctorReview> {
                       return;
                     }
 
-                    final review = {
-                      "doctorId": widget.doctor["_id"],
-                      "patientId": SharedResources.userData.value['_id'],
+                    final String? patientId =
+                        SharedResources.userData.value['_id'];
+                    if (patientId == null) return;
+
+                    final reviewData = {
+                      "doctorId": widget.doctor.id,
+                      "patientId": patientId,
                       "rating": rating,
                       "comment": comment,
                     };
 
                     try {
-                      final success = await ApiService().addReview(review);
+                      final success = await ApiService().addReview(reviewData);
 
                       if (success) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -204,9 +236,19 @@ class _AddDoctorReview extends State<AddDoctorReview> {
                           ),
                         );
 
+                        // Since we have a typed list now, we should add a Review object
+                        final newReview = Review(
+                          id: "temp_${DateTime.now().millisecondsSinceEpoch}", // temporary ID until next refresh
+                          doctorId: widget.doctor.id,
+                          patientId: patientId,
+                          rating: rating,
+                          comment: comment,
+                          createdAt: DateTime.now(),
+                        );
+
                         SharedResources.reviews.value = [
                           ...SharedResources.reviews.value,
-                          review,
+                          newReview,
                         ];
 
                         Navigator.pop(context);
@@ -232,5 +274,11 @@ class _AddDoctorReview extends State<AddDoctorReview> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    reviewController.dispose();
+    super.dispose();
   }
 }

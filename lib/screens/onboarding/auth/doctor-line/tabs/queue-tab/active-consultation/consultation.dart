@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:collection/collection.dart';
+import 'package:swiftcare/models/appointment_model.dart';
+import 'package:swiftcare/models/patient_model.dart';
 import 'package:swiftcare/services/shared_resource.dart';
 
 class ActiveConsultation extends StatefulWidget {
-  final Map<String, dynamic> appointment;
+  final Appointment appointment;
 
   const ActiveConsultation({super.key, required this.appointment});
 
@@ -12,7 +15,7 @@ class ActiveConsultation extends StatefulWidget {
 }
 
 class _ActiveConsultationState extends State<ActiveConsultation> {
-  late Map<String, dynamic>? patient;
+  late Patient? patient;
 
   @override
   void initState() {
@@ -20,29 +23,39 @@ class _ActiveConsultationState extends State<ActiveConsultation> {
     patient = _getPatientInfo(widget.appointment);
   }
 
-  Map<String, dynamic>? _getPatientInfo(Map<String, dynamic> appt) {
-    if (appt["patient"] != null && appt["patient"] is Map) return appt["patient"];
-    String? pId = appt["patientId"];
-    if (pId != null) {
-      try {
-        return SharedResources.patients.value.firstWhere((p) => p["_id"] == pId);
-      } catch (_) {}
-    }
-    return null;
+  Patient? _getPatientInfo(Appointment appt) {
+    return SharedResources.patients.value
+        .firstWhereOrNull((p) => p.id == appt.patientId);
   }
 
   void _completeAndNext() {
-    // Mark current appointment as completed
-    widget.appointment["status"] = "completed";
-    SharedResources.appointments.notifyListeners();
+    // Current approach manually updates the list and notifies
+    // In a future phase, we should move this to a Service.
+    final List<Appointment> allAppts = List.from(SharedResources.appointments.value);
+    final index = allAppts.indexWhere((a) => a.id == widget.appointment.id);
+    
+    if (index != -1) {
+      allAppts[index] = Appointment(
+        id: widget.appointment.id,
+        patientId: widget.appointment.patientId,
+        doctorId: widget.appointment.doctorId,
+        doctorName: widget.appointment.doctorName,
+        date: widget.appointment.date,
+        time: widget.appointment.time,
+        status: "Completed",
+        consultationNotes: widget.appointment.consultationNotes,
+        amount: widget.appointment.amount,
+      );
+      SharedResources.appointments.value = allAppts;
+    }
 
     // Fetch next patient
-    List<dynamic> docAppts = SharedResources.appointments.value
-        .where((a) => a["doctorId"] == widget.appointment["doctorId"] && a["status"] != "completed")
+    List<Appointment> docAppts = SharedResources.appointments.value
+        .where((a) => a.doctorId == widget.appointment.doctorId && a.status != "Completed")
         .toList();
 
     if (docAppts.isNotEmpty) {
-      Map<String, dynamic> nextAppt = docAppts.first;
+      Appointment nextAppt = docAppts.first;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -57,19 +70,21 @@ class _ActiveConsultationState extends State<ActiveConsultation> {
 
   @override
   Widget build(BuildContext context) {
-    String name = patient?["name"] ?? widget.appointment["patientName"] ?? "Unknown";
-    String age = patient?["age"]?.toString() ?? "N/A";
-    String gender = patient?["gender"] ?? "N/A";
-    String bloodGroup = patient?["bloodGroup"] ?? "N/A";
+    String name = patient?.name ?? "Unknown";
+    String age = patient?.age?.toString() ?? "N/A";
+    String gender = patient?.gender ?? "N/A";
 
-    List<dynamic> symptoms = widget.appointment["symptoms"] ?? ["No symptoms"];
+    List<String> symptoms = ["General Checkup"]; 
 
     return Scaffold(
       backgroundColor: const Color(0xffF5F7FA),
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.white,
-        leading: const Icon(Icons.arrow_back, color: Colors.black87),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          onPressed: () => Navigator.pop(context),
+        ),
         titleSpacing: 0,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -83,8 +98,8 @@ class _ActiveConsultationState extends State<ActiveConsultation> {
               ),
             ),
             const SizedBox(height: 2),
-            Row(
-              children: const [
+            const Row(
+              children: [
                 Icon(Icons.circle, size: 8, color: Colors.green),
                 SizedBox(width: 6),
                 Text(
@@ -139,7 +154,7 @@ class _ActiveConsultationState extends State<ActiveConsultation> {
                             CircleAvatar(
                               radius: 32,
                               backgroundImage: NetworkImage(
-                                  patient?["image"] ??
+                                  patient?.image ??
                                       "https://i.pravatar.cc/150?img=12"),
                             ),
                             Positioned(
@@ -183,7 +198,9 @@ class _ActiveConsultationState extends State<ActiveConsultation> {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(
-                                      "#${patient?["_id"]?.toString().substring(patient!["_id"].toString().length - 4) ?? "N/A"}",
+                                      patient != null && patient!.id.length >= 4
+                                          ? "#${patient!.id.substring(patient!.id.length - 4)}"
+                                          : "#N/A",
                                       style: const TextStyle(fontSize: 12),
                                     ),
                                   ),
@@ -205,7 +222,7 @@ class _ActiveConsultationState extends State<ActiveConsultation> {
                                   const Icon(Icons.bloodtype,
                                       size: 16, color: Colors.grey),
                                   const SizedBox(width: 4),
-                                  Text(bloodGroup),
+                                  const Text("N/A"), // Place holder for blood group
                                 ],
                               ),
                             ],
@@ -244,7 +261,7 @@ class _ActiveConsultationState extends State<ActiveConsultation> {
               /// NOTES HEADER
               Row(
                 children: [
-                  Icon(Icons.notes, color: Colors.blue),
+                  const Icon(Icons.notes, color: Colors.blue),
                   const SizedBox(width: 10),
                   Text(
                     "Consultation Notes",
@@ -287,7 +304,7 @@ class _ActiveConsultationState extends State<ActiveConsultation> {
               /// DIAGNOSIS
               Row(
                 children: [
-                  Icon(Icons.biotech, color: Colors.blue),
+                  const Icon(Icons.biotech, color: Colors.blue),
                   const SizedBox(width: 10),
                   Text(
                     "Diagnosis (ICD-10)",

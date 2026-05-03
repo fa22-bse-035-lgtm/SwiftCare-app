@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:swiftcare/services/colors.dart';
 import 'package:swiftcare/services/shared_resource.dart';
+import 'package:swiftcare/utils/app_config.dart';
 
 class ProfileTab extends StatelessWidget {
   const ProfileTab({super.key});
@@ -19,9 +20,8 @@ class ProfileTab extends StatelessWidget {
           builder: (context, userData, child) {
             String name = userData["name"] ?? "Doctor";
             String specialization = userData["specialization"] ?? "Specialist";
-            String imagePath = userData["image"] ?? "images/Jane.jpg";
-            String imageUrl =
-                "http://swiftcare.up.railway.app/${imagePath.replaceAll("\\", "/")}";
+            String imagePath = userData["image"] ?? "";
+            String imageUrl = AppConfig.getImageUrl(imagePath);
 
             return SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -36,11 +36,21 @@ class ProfileTab extends StatelessWidget {
                       CircleAvatar(
                         radius: 60,
                         backgroundColor: Colors.blue.shade100,
-                        child: CircleAvatar(
-                          radius: 54,
-                          backgroundImage: NetworkImage(imageUrl),
-                          onBackgroundImageError: (_, __) =>
-                              const AssetImage("assets/images/Jane.jpg"),
+                        child: ClipOval(
+                          child: FadeInImage.assetNetwork(
+                            placeholder: "assets/images/Jane.jpg",
+                            image: imageUrl,
+                            fit: BoxFit.cover,
+                            width: 108,
+                            height: 108,
+                            imageErrorBuilder: (context, error, stackTrace) =>
+                                Image.asset(
+                              "assets/images/Jane.jpg",
+                              fit: BoxFit.cover,
+                              width: 108,
+                              height: 108,
+                            ),
+                          ),
                         ),
                       ),
                       Container(
@@ -161,12 +171,14 @@ class ProfileTab extends StatelessWidget {
                         const SizedBox(height: 10),
 
                         ...List.generate(
-                          (userData["availableDays"] as List?)?.length ?? 0,
+                          (userData["schedule"]?["availableDays"] as List?)?.length ?? 0,
                           (index) {
-                            String day = userData["availableDays"][index];
-                            String hours = userData["availableHours"] != null && userData["availableHours"].length > index
-                                ? userData["availableHours"][index]
-                                : "N/A";
+                            final schedule = userData["schedule"] ?? {};
+                            final days = schedule["availableDays"] as List? ?? [];
+                            final hours = schedule["availableHours"] as List? ?? [];
+
+                            String day = days[index];
+                            String hourRange = hours.length > index ? hours[index] : "N/A";
 
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 12),
@@ -175,7 +187,7 @@ class ProfileTab extends StatelessWidget {
                                 children: [
                                   Text(day, style: GoogleFonts.poppins()),
                                   Text(
-                                    hours,
+                                    hourRange,
                                     style: GoogleFonts.poppins(
                                       fontWeight: FontWeight.w500,
                                     ),
@@ -185,7 +197,7 @@ class ProfileTab extends StatelessWidget {
                             );
                           },
                         ),
-                        if ((userData["availableDays"] as List?)?.isEmpty ?? true)
+                        if ((userData["schedule"]?["availableDays"] as List?)?.isEmpty ?? true)
                           Padding(
                             padding: const EdgeInsets.only(bottom: 12),
                             child: Row(

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:swiftcare/screens/onboarding/auth/doctor-line/tabs/navbar.dart';
-import 'package:swiftcare/screens/onboarding/auth/patient-line/location/permit.dart';
-import 'package:swiftcare/screens/onboarding/auth/patient-line/location/profile/tabs/navbar.dart';
+// import 'package:swiftcare/screens/onboarding/auth/patient-line/location/permit.dart';
+// import 'package:swiftcare/screens/onboarding/auth/patient-line/location/profile/tabs/navbar.dart';
 import 'package:swiftcare/services/auth_service.dart';
 import 'package:swiftcare/services/colors.dart';
 import 'package:swiftcare/services/shared_resource.dart';
@@ -217,16 +217,20 @@ class _SignInState extends State<SignIn> {
 
                         if (!context.mounted) return;
 
-                        if(await SharedResources().getUserRole() == "doctor"){
+                        if (await SharedResources().getUserRole() == "doctor") {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => const DoctorNavBar()),
+                            MaterialPageRoute(
+                              builder: (_) => const DoctorNavBar(),
+                            ),
                           );
-                        }else{
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const PatientNavBar()),
-                          );
+                        } else {
+                          // Navigator.push(
+                          //   context,
+                          //   MaterialPageRoute(
+                          //     builder: (_) => const PatientNavBar(),
+                          //   ),
+                          // );
                         }
                       } catch (e) {
                         Navigator.pop(context);
@@ -300,10 +304,10 @@ class _SignInState extends State<SignIn> {
 
                           if (!context.mounted) return;
                           Navigator.pop(context); // close loader
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const Permit()),
-                          );
+                          // Navigator.push(
+                          //   context,
+                          //   MaterialPageRoute(builder: (_) => const Permit()),
+                          // );
                         } catch (e) {
                           Navigator.pop(context);
                           showError(e.toString().replaceAll("Exception: ", ""));
@@ -369,6 +373,13 @@ class _SignInState extends State<SignIn> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
   }
 
   void showError(String message) {

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:collection/collection.dart';
+import 'package:swiftcare/models/appointment_model.dart';
+import 'package:swiftcare/models/patient_model.dart';
 import 'package:swiftcare/screens/onboarding/auth/doctor-line/tabs/queue-tab/active-consultation/consultation.dart';
 import 'package:swiftcare/services/colors.dart';
 import 'package:swiftcare/services/shared_resource.dart';
@@ -21,61 +24,45 @@ class QueueTab extends StatelessWidget {
             builder: (context, userData, child) {
               String doctorId = userData["_id"] ?? "";
 
-              return ValueListenableBuilder<List<dynamic>>(
+              return ValueListenableBuilder<List<Appointment>>(
                 valueListenable: SharedResources.appointments,
                 builder: (context, appointments, child) {
                   // Filter for this doctor
-                  List<dynamic> docAppts = appointments.where((a) {
-                    return a["doctorId"] == doctorId ||
-                        (a["doctor"] != null && a["doctor"]["_id"] == doctorId);
+                  List<Appointment> docAppts = appointments.where((a) {
+                    return a.doctorId == doctorId;
                   }).toList();
 
                   // Identify current and remaining
-                  Map<String, dynamic>? currentServing;
-                  List<dynamic> upcomingAppts = [];
+                  Appointment? currentServing;
+                  List<Appointment> upcomingAppts = [];
 
                   if (docAppts.isNotEmpty) {
-                    currentServing = docAppts.firstWhere(
-                        (a) => a["status"] != "completed",
-                        orElse: () => docAppts.first);
-                    if (docAppts.length > 1) {
-                      upcomingAppts = docAppts
-                          .where((a) => a != currentServing)
-                          .toList();
-                    }
+                    currentServing = docAppts.firstWhereOrNull(
+                      (a) => a.status.toLowerCase() != "completed" && a.status.toLowerCase() != "cancelled"
+                    );
+                    
+                    upcomingAppts = docAppts
+                        .where((a) => a.id != currentServing?.id && a.status.toLowerCase() != "completed" && a.status.toLowerCase() != "cancelled")
+                        .toList();
                   }
 
-                  Map<String, dynamic>? getPatientInfo(dynamic appt) {
-                    if (appt == null) return null;
-                    if (appt["patient"] != null && appt["patient"] is Map) {
-                      return appt["patient"];
-                    }
-                    String? pId = appt["patientId"];
-                    if (pId != null) {
-                      try {
-                        return SharedResources.patients.value
-                            .firstWhere((p) => p["_id"] == pId);
-                      } catch (_) {}
-                    }
-                    return null;
+                  Patient? getPatientInfo(Appointment appt) {
+                    return SharedResources.patients.value
+                        .firstWhereOrNull((p) => p.id == appt.patientId);
                   }
 
                   int remainingCount = upcomingAppts.length;
 
-                  Map<String, dynamic>? currentPatient = getPatientInfo(currentServing);
-                  String currentId = currentPatient != null &&
-                          currentPatient["_id"] != null
-                      ? "#${currentPatient["_id"].toString().length > 4 ? currentPatient["_id"].toString().substring(currentPatient["_id"].toString().length - 4) : currentPatient["_id"]}"
+                  Patient? currentPatient = currentServing != null ? getPatientInfo(currentServing) : null;
+                  String currentId = currentPatient != null
+                      ? "#${currentPatient.id.length > 4 ? currentPatient.id.substring(currentPatient.id.length - 4) : currentPatient.id}"
                       : "#N/A";
-                  String currentName = currentPatient != null
-                      ? currentPatient["name"] ?? "Unknown"
-                      : "No Patient";
+                  String currentName = currentPatient?.name ?? "No Patient";
 
-                  Map<String, dynamic>? nextPatient =
+                  Patient? nextPatient =
                       upcomingAppts.isNotEmpty ? getPatientInfo(upcomingAppts.first) : null;
-                  String nextId = nextPatient != null &&
-                          nextPatient["_id"] != null
-                      ? "#${nextPatient["_id"].toString().length > 4 ? nextPatient["_id"].toString().substring(nextPatient["_id"].toString().length - 4) : nextPatient["_id"]}"
+                  String nextId = nextPatient != null
+                      ? "#${nextPatient.id.length > 4 ? nextPatient.id.substring(nextPatient.id.length - 4) : nextPatient.id}"
                       : "#N/A";
 
                   return Column(
@@ -241,6 +228,7 @@ class QueueTab extends StatelessWidget {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(18),
                             ),
+                            disabledBackgroundColor: Colors.grey.shade300,
                             textStyle: GoogleFonts.poppins(
                               fontWeight: FontWeight.w600,
                               fontSize: 15,
@@ -250,9 +238,23 @@ class QueueTab extends StatelessWidget {
                               ? () {
                                   // Mark current as completed
                                   if (currentServing != null) {
-                                    currentServing["status"] = "completed";
-                                    SharedResources.appointments
-                                        .notifyListeners();
+                                      final serving = currentServing;
+                                      final List<Appointment> allAppts = List.from(SharedResources.appointments.value);
+                                      final index = allAppts.indexWhere((a) => a.id == serving.id);
+                                      if (index != -1) {
+                                          allAppts[index] = Appointment(
+                                              id: serving.id,
+                                              patientId: serving.patientId,
+                                              doctorId: serving.doctorId,
+                                              doctorName: serving.doctorName,
+                                              date: serving.date,
+                                              time: serving.time,
+                                              status: "completed",
+                                              consultationNotes: serving.consultationNotes,
+                                              amount: serving.amount,
+                                          );
+                                          SharedResources.appointments.value = allAppts;
+                                      }
                                   }
 
                                   // Navigate to active consultation with next patient
@@ -314,17 +316,14 @@ class QueueTab extends StatelessWidget {
                                 itemBuilder: (context, index) {
                                   final appt = upcomingAppts[index];
                                   final pInfo = getPatientInfo(appt);
-                                  String pId = pInfo != null &&
-                                          pInfo["_id"] != null
-                                      ? "#${pInfo["_id"].toString().length > 4 ? pInfo["_id"].toString().substring(pInfo["_id"].toString().length - 4) : pInfo["_id"]}"
+                                  String pIdToken = pInfo != null
+                                      ? "#${pInfo.id.length > 4 ? pInfo.id.substring(pInfo.id.length - 4) : pInfo.id}"
                                       : "#N/A";
-                                  String pName = pInfo != null
-                                      ? pInfo["name"] ?? "Unknown"
-                                      : "Unknown";
-                                  String waitTime = appt["time"] ?? "N/A";
+                                  String pName = pInfo?.name ?? "Unknown";
+                                  String waitTime = appt.time;
 
                                   return PatientTile(
-                                    pId,
+                                    pIdToken,
                                     pName,
                                     waitTime,
                                     index == 0,

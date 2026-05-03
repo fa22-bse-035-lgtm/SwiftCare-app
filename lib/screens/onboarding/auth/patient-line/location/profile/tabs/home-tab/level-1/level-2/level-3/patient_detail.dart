@@ -1,23 +1,51 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:swiftcare/models/doctor_model.dart';
 import 'package:swiftcare/screens/onboarding/auth/patient-line/location/profile/tabs/home-tab/level-1/level-2/level-3/level-4/review_summary.dart';
 import 'package:swiftcare/services/colors.dart';
 import 'package:swiftcare/widgets/app_bar.dart';
 
-class PatientDetails extends StatelessWidget {
+class PatientDetails extends StatefulWidget {
   final Map<String, dynamic> appointment;
-  final Map<String, dynamic> doctor;
+  final Doctor doctor;
 
-  PatientDetails({super.key, required this.appointment, required this.doctor});
+  const PatientDetails({
+    super.key,
+    required this.appointment,
+    required this.doctor,
+  });
 
+  @override
+  State<PatientDetails> createState() => _PatientDetailsState();
+}
+
+class _PatientDetailsState extends State<PatientDetails> {
   // Controllers
-  final TextEditingController ageController = TextEditingController();
-  final TextEditingController problemController = TextEditingController();
+  late TextEditingController ageController;
+  late TextEditingController problemController;
 
-  // ValueNotifiers instead of StatefulWidget
-  final ValueNotifier<String> bookingFor = ValueNotifier("Self");
-  final ValueNotifier<String> gender = ValueNotifier("Male");
+  // ValueNotifiers for state management
+  late ValueNotifier<String> bookingFor;
+  late ValueNotifier<String> gender;
+
+  @override
+  void initState() {
+    super.initState();
+    ageController = TextEditingController();
+    problemController = TextEditingController();
+    bookingFor = ValueNotifier("Self");
+    gender = ValueNotifier("Male");
+  }
+
+  @override
+  void dispose() {
+    ageController.dispose();
+    problemController.dispose();
+    bookingFor.dispose();
+    gender.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,16 +79,21 @@ class PatientDetails extends StatelessWidget {
             }
 
             // Update appointment object
-            appointment["bookingFor"] = bookingFor.value;
-            appointment["gender"] = gender.value;
-            appointment["age"] = ageController.text.trim();
-            appointment["problem"] = problemController.text.trim();
+            widget.appointment["bookingFor"] = bookingFor.value;
+            widget.appointment["gender"] = gender.value;
+            widget.appointment["age"] = ageController.text.trim();
+            widget.appointment["problem"] = problemController.text.trim();
+            widget.appointment["consultationNotes"] = problemController.text
+                .trim(); // NEW: Sync for backend parity
 
             // Next screen
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => ReviewSummary(appointment: appointment, doc: doctor),
+                builder: (context) => ReviewSummary(
+                  appointment: widget.appointment,
+                  doctor: widget.doctor,
+                ),
               ),
             );
           },
@@ -76,7 +109,7 @@ class PatientDetails extends StatelessWidget {
       ),
 
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.only(left: 25, right: 25),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -90,7 +123,7 @@ class PatientDetails extends StatelessWidget {
                 builder: (_, value, _) {
                   return _dropdown(
                     value: value,
-                    items: ["Self", "Someone Else"],
+                    items: const ["Self", "Someone Else"],
                     onChanged: (v) => bookingFor.value = v!,
                   );
                 },
@@ -105,7 +138,7 @@ class PatientDetails extends StatelessWidget {
                 builder: (_, value, _) {
                   return _dropdown(
                     value: value,
-                    items: ["Male", "Female", "Other"],
+                    items: const ["Male", "Female", "Other"],
                     onChanged: (v) => gender.value = v!,
                   );
                 },
@@ -180,6 +213,7 @@ class PatientDetails extends StatelessWidget {
                   ),
                 ),
               ),
+              const SizedBox(height: 20),
             ],
           ),
         ),

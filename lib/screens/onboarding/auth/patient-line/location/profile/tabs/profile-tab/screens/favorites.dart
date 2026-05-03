@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:swiftcare/models/doctor_model.dart';
 import 'package:swiftcare/services/colors.dart';
 import 'package:swiftcare/services/shared_resource.dart';
 import 'package:swiftcare/widgets/app_bar.dart';
@@ -6,14 +7,12 @@ import 'package:swiftcare/widgets/doctors_list.dart';
 import 'package:uicons/uicons.dart';
 
 class Favorites extends StatelessWidget {
-  Favorites({super.key});
+  const Favorites({super.key});
 
-  List<dynamic> get _favoriteDoctors {
+  List<Doctor> get _favoriteDoctors {
     final List<String> favIds = SharedResources.favorites.value;
     return SharedResources.doctors.value.where((doc) {
-      if (doc is! Map<String, dynamic>) return false;
-      final id = (doc['_id'] ?? doc['id'] ?? '').toString();
-      return favIds.contains(id);
+      return favIds.contains(doc.id);
     }).toList();
   }
 

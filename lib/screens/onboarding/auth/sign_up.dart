@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:swiftcare/screens/onboarding/auth/patient-line/location/permit.dart';
+// import 'package:swiftcare/screens/onboarding/auth/patient-line/location/permit.dart';
 import 'package:uicons/uicons.dart';
 import 'package:swiftcare/services/auth_service.dart';
 import 'package:swiftcare/services/colors.dart';
@@ -258,10 +258,10 @@ class _SignUpState extends State<SignUp> {
 
                         if (!context.mounted) return;
 
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const Permit()),
-                        );
+                        // Navigator.push(
+                        //   context,
+                        //   MaterialPageRoute(builder: (_) => const Permit()),
+                        // );
                       } catch (e) {
                         Navigator.pop(context);
                         showError(e.toString());
@@ -334,10 +334,10 @@ class _SignUpState extends State<SignUp> {
 
                           if (!context.mounted) return;
                           Navigator.pop(context); // close loader
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const Permit()),
-                          );
+                          // Navigator.push(
+                          //   context,
+                          //   MaterialPageRoute(builder: (_) => const Permit()),
+                          // );
                         } catch (e) {
                           Navigator.pop(context);
                           showError(e.toString().replaceAll("Exception: ", ""));
@@ -434,6 +434,13 @@ class _SignUpState extends State<SignUp> {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
   }
 }
 

@@ -1,13 +1,15 @@
-import 'package:swiftcare/screens/onboarding/auth/patient-line/location/profile/tabs/home-tab/level-1/doctor_detail.dart';
-import 'package:swiftcare/services/helper_functions.dart';
-import 'package:swiftcare/widgets/favorite_heart.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:swiftcare/services/colors.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:swiftcare/models/doctor_model.dart';
+// import 'package:swiftcare/screens/onboarding/auth/patient-line/location/profile/tabs/home-tab/level-1/doctor_detail.dart';
+import 'package:swiftcare/services/colors.dart';
+import 'package:swiftcare/services/helper_functions.dart';
+import 'package:swiftcare/utils/app_config.dart';
+import 'package:swiftcare/widgets/favorite_heart.dart';
 
 class DoctorsList extends StatelessWidget {
-  final List<dynamic> doctors;
-  DoctorsList({super.key, required this.doctors});
+  final List<Doctor> doctors;
+  const DoctorsList({super.key, required this.doctors});
 
   @override
   Widget build(BuildContext context) {
@@ -21,25 +23,24 @@ class DoctorsList extends StatelessWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemBuilder: (context, index) {
-        final item = doctors[index];
-        if (item is! Map<String, dynamic>) return const SizedBox.shrink();
-        return doctorCard(item, context);
+        final doctor = doctors[index];
+        return doctorCard(doctor, context);
       },
     );
   }
 
-  Widget doctorCard(Map<String, dynamic> doc, BuildContext context) {
-    final String id = (doc["_id"] ?? doc["id"] ?? "").toString();
-    final String name = doc["name"] ?? "Unknown";
-    final String specialty = doc["specialization"] ?? "Unknown";
-    final String image = (doc["image"] ?? "images/Jane.jpg").toString();
+  Widget doctorCard(Doctor doctor, BuildContext context) {
+    final String id = doctor.id;
+    final String name = doctor.name;
+    final String specialty = doctor.specialization;
+    final String image = doctor.image;
 
-    final double reviews = HelperFunctions().reviewsNumber(id);
-    final double rating = reviews == 0
-        ? 0
-        : HelperFunctions().calculateRating(id) / reviews;
+    final double reviewsCount = HelperFunctions().reviewsNumber(id);
+    final double rating = HelperFunctions().calculateRating(id);
 
     int stars = rating.isFinite ? rating.round() : 0;
+
+    String imageUrl = AppConfig.getImageUrl(image);
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 10),
@@ -57,18 +58,28 @@ class DoctorsList extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  "http://swiftcare.up.railway.app/${image.replaceAll("\\", "/")}",
-                  height: 90,
-                  width: 70,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => Image.asset(
-                    "assets/images/Jane.jpg",
-                    height: 90,
-                    width: 70,
-                    fit: BoxFit.cover,
-                  ),
-                ),
+                child: image.startsWith('assets') 
+                    ? Image.asset(
+                        image,
+                        height: 90,
+                        width: 70,
+                        fit: BoxFit.cover,
+                      )
+                    : FadeInImage.assetNetwork(
+                        placeholder: 'assets/images/Jane.jpg',
+                        image: imageUrl,
+                        height: 90,
+                        width: 70,
+                        fit: BoxFit.cover,
+                        imageErrorBuilder: (context, error, stackTrace) {
+                          return Image.asset(
+                            'assets/images/Jane.jpg',
+                            height: 90,
+                            width: 70,
+                            fit: BoxFit.cover,
+                          );
+                        },
+                      ),
               ),
 
               const SizedBox(width: 15),
@@ -142,7 +153,7 @@ class DoctorsList extends StatelessWidget {
                         ),
                         const SizedBox(width: 5),
                         Text(
-                          rating.toString(),
+                          rating.toStringAsFixed(1),
                           style: GoogleFonts.poppins(
                             fontWeight: FontWeight.w500,
                             fontSize: 12,
@@ -152,7 +163,7 @@ class DoctorsList extends StatelessWidget {
                         const Text("|"),
                         const Spacer(),
                         Text(
-                          "$reviews Reviews",
+                          "${reviewsCount.toInt()} Reviews",
                           style: GoogleFonts.poppins(
                             color: Colors.grey,
                             fontSize: 12,
@@ -173,10 +184,10 @@ class DoctorsList extends StatelessWidget {
             width: double.infinity,
             child: TextButton(
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => DoctorDetails(doc: doc)),
-                );
+                // Navigator.push(
+                //   context,
+                //   MaterialPageRoute(builder: (_) => DoctorDetails(doctor: doctor)),
+                // );
               },
               style: TextButton.styleFrom(
                 backgroundColor: const Color(0xFFE8F2FF),

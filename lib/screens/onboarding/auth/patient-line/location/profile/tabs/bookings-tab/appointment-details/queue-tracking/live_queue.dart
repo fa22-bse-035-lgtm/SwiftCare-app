@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:swiftcare/models/doctor_model.dart';
 import 'package:swiftcare/services/colors.dart';
 import 'package:swiftcare/services/socket_service.dart';
+import 'package:swiftcare/utils/app_config.dart';
 import 'package:swiftcare/widgets/app_bar.dart';
 
 class LiveQueue extends StatefulWidget {
-  final Map<String, dynamic> doc;
+  final Doctor doctor;
   final String shiftId;
   final int queueNumber;
 
   const LiveQueue({
     super.key,
-    required this.doc,
+    required this.doctor,
     required this.shiftId,
     required this.queueNumber,
   });
@@ -21,24 +23,32 @@ class LiveQueue extends StatefulWidget {
 }
 
 class _LiveQueueState extends State<LiveQueue> {
-
   final SocketService socketService = SocketService();
-
   int currentServing = 0;
+  late ImageProvider _avatarImage;
 
   @override
   void initState() {
     super.initState();
-
+    _initAvatarImage();
     socketService.connect();
-
     socketService.joinQueueRoom(widget.shiftId);
-
     socketService.listenQueueUpdates((data) {
-      setState(() {
-        currentServing = data["currentServing"];
-      });
+      if (mounted) {
+        setState(() {
+          currentServing = data["currentServing"];
+        });
+      }
     });
+  }
+
+  void _initAvatarImage() {
+    String imagePath = widget.doctor.image;
+    if (imagePath.startsWith('assets')) {
+      _avatarImage = AssetImage(imagePath);
+    } else {
+      _avatarImage = NetworkImage(AppConfig.getImageUrl(imagePath));
+    }
   }
 
   @override
@@ -56,7 +66,7 @@ class _LiveQueueState extends State<LiveQueue> {
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
 
-      appBar: CustomAppBar(color: true, title: "Live Queue"),
+      appBar: const CustomAppBar(color: true, title: "Live Queue"),
 
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -214,7 +224,7 @@ class _LiveQueueState extends State<LiveQueue> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(10),
                     child: LinearProgressIndicator(
-                      value: currentServing / widget.queueNumber,
+                      value: widget.queueNumber > 0 ? currentServing / widget.queueNumber : 0,
                       minHeight: 10,
                       backgroundColor: Colors.grey.shade300,
                       color: AppColors.primaryColor,
@@ -228,7 +238,7 @@ class _LiveQueueState extends State<LiveQueue> {
                       const Icon(Icons.check_circle, color: AppColors.primaryColor, size: 18),
                       const SizedBox(width: 6),
                       Text(
-                        "Almost there! You’re next in line.",
+                        patientsAhead <= 1 ? "Almost there! You’re next in line." : "Tracking your turn live.",
                         style: GoogleFonts.poppins(fontSize: 13),
                       ),
                     ],
@@ -261,9 +271,14 @@ class _LiveQueueState extends State<LiveQueue> {
               ),
               child: Row(
                 children: [
-                  const CircleAvatar(
+                  CircleAvatar(
                     radius: 26,
-                    backgroundImage: AssetImage("assets/images/Jane.jpg"),
+                    backgroundImage: _avatarImage,
+                    onBackgroundImageError: (_, __) {
+                      setState(() {
+                        _avatarImage = const AssetImage("assets/images/Jane.jpg");
+                      });
+                    },
                   ),
 
                   const SizedBox(width: 12),
@@ -273,13 +288,13 @@ class _LiveQueueState extends State<LiveQueue> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "${widget.doc['name']}",
+                          widget.doctor.name,
                           style: GoogleFonts.poppins(
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         Text(
-                          "${widget.doc['specialization']}",
+                          widget.doctor.specialization,
                           style: GoogleFonts.poppins(
                             fontSize: 13,
                             color: Colors.grey,
@@ -318,24 +333,24 @@ class _LiveQueueState extends State<LiveQueue> {
 
             /// UPDATE CARD
             _updateCard(
-              "Patient #4 called to Consultation Room 1",
-              "10:15 AM",
-              primary: true,
+              "Patient #$currentServing called to Consultation Room",
+              "Just now",
+              isPrimary: true,
             ),
 
-            _updateCard("Patient #3 consultation completed", "10:12 AM"),
+            _updateCard("Clinic is operating normally", "Today"),
 
-            _updateCard("Your check-in confirmed", "10:02 AM"),
+            _updateCard("Your check-in confirmed", "Earlier"),
           ],
         ),
       ),
 
       bottomNavigationBar: Container(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primaryColor,
-            minimumSize: Size(double.infinity, 55),
+            minimumSize: const Size(double.infinity, 55),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
             ),
@@ -354,20 +369,20 @@ class _LiveQueueState extends State<LiveQueue> {
     );
   }
 
-  Widget _updateCard(String text, String time, {bool primary = false}) {
+  Widget _updateCard(String text, String time, {bool isPrimary = false}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: primary
+        border: isPrimary
             ? const Border(left: BorderSide(color: Color(0xFF1E66F5), width: 4))
             : null,
       ),
       child: Row(
         children: [
-          Icon(
+          const Icon(
             Icons.circle,
             size: 8,
             color: AppColors.primaryColor,

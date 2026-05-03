@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:swiftcare/models/doctor_model.dart';
+import 'package:swiftcare/screens/onboarding/auth/patient-line/location/profile/tabs/home-tab/level-1/doctor_detail.dart';
 import 'package:swiftcare/services/shared_resource.dart';
+import 'package:swiftcare/utils/app_config.dart';
 
 class SearchDoctors extends StatefulWidget {
   const SearchDoctors({super.key});
@@ -12,7 +15,7 @@ class SearchDoctors extends StatefulWidget {
 class _SearchDoctorsState extends State<SearchDoctors> {
   final TextEditingController _searchController = TextEditingController();
 
-  List<dynamic> _searchResults = [];
+  List<Doctor> _searchResults = [];
 
   void _searchDoctors(String query) {
     if (query.trim().isEmpty) {
@@ -28,9 +31,8 @@ class _SearchDoctorsState extends State<SearchDoctors> {
     final keywords = query.toLowerCase().trim().split(RegExp(r'\s+'));
 
     final results = doctors.where((doc) {
-      final name = (doc["name"] ?? "").toString().toLowerCase();
-      final specialization =
-          (doc["specialization"] ?? "").toString().toLowerCase();
+      final name = doc.name.toLowerCase();
+      final specialization = doc.specialization.toLowerCase();
 
       final searchableText = "$name $specialization";
 
@@ -89,18 +91,22 @@ class _SearchDoctorsState extends State<SearchDoctors> {
             const SizedBox(height: 15),
 
             /// Results
-            Expanded(
-              child: DoctorResults(searchResults: _searchResults),
-            ),
+            Expanded(child: DoctorResults(searchResults: _searchResults)),
           ],
         ),
       ),
     );
   }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 }
 
 class DoctorResults extends StatelessWidget {
-  final List<dynamic> searchResults;
+  final List<Doctor> searchResults;
 
   const DoctorResults({super.key, required this.searchResults});
 
@@ -108,10 +114,7 @@ class DoctorResults extends StatelessWidget {
   Widget build(BuildContext context) {
     if (searchResults.isEmpty) {
       return const Center(
-        child: Text(
-          'No doctors found.',
-          style: TextStyle(fontSize: 16),
-        ),
+        child: Text('No doctors found.', style: TextStyle(fontSize: 16)),
       );
     }
 
@@ -121,47 +124,80 @@ class DoctorResults extends StatelessWidget {
       itemBuilder: (context, index) {
         final doctor = searchResults[index];
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 28,
-                backgroundImage: NetworkImage(doctor["avatar"] ?? ""),
+        String imagePath = doctor.image;
+        String imageUrl = AppConfig.getImageUrl(imagePath);
+
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DoctorDetails(doctor: doctor),
               ),
-
-              const SizedBox(width: 14),
-
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      doctor["name"] ?? "",
-                      style: GoogleFonts.poppins(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-
-                    const SizedBox(height: 3),
-
-                    Text(
-                      doctor["specialization"] ?? "",
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: Colors.grey[200],
+                  child: ClipOval(
+                    child: imagePath.startsWith('assets')
+                        ? Image.asset(
+                            imagePath,
+                            width: 56,
+                            height: 56,
+                            fit: BoxFit.cover,
+                          )
+                        : FadeInImage.assetNetwork(
+                            placeholder: 'assets/images/default_doctor.png',
+                            image: imageUrl,
+                            width: 56,
+                            height: 56,
+                            fit: BoxFit.cover,
+                            imageErrorBuilder: (context, error, stackTrace) {
+                              return Image.asset(
+                                'assets/images/default_doctor.png',
+                                width: 56,
+                                height: 56,
+                                fit: BoxFit.cover,
+                              );
+                            },
+                          ),
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        doctor.name,
+                        style: GoogleFonts.poppins(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        doctor.specialization,
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },

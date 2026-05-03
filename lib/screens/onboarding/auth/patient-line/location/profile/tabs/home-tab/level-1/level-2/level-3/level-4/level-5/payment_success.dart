@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:swiftcare/models/doctor_model.dart';
 import 'package:swiftcare/services/colors.dart';
 import 'package:swiftcare/widgets/app_bar.dart';
 
 class PaymentSuccess extends StatelessWidget {
   final Map<String, dynamic> appointment;
-  final Map<String, dynamic> doc;
+  final Doctor doctor;
 
   const PaymentSuccess({
     super.key,
     required this.appointment,
-    required this.doc,
+    required this.doctor,
   });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
-      appBar: CustomAppBar(title: "Payment", color: true),
+      appBar: const CustomAppBar(title: "Payment", color: true),
 
       body: Padding(
         padding: const EdgeInsets.only(left: 25, right: 25),
@@ -57,9 +58,9 @@ class PaymentSuccess extends StatelessWidget {
 
             const SizedBox(height: 3),
 
-            // DOCTOR NAME (dynamic)
+            // DOCTOR NAME
             Text(
-              doc["name"] ?? "Doctor",
+              doctor.name,
               style: GoogleFonts.inter(
                 fontSize: 15,
                 color: Colors.black,
@@ -86,7 +87,7 @@ class PaymentSuccess extends StatelessWidget {
                   children: [
                     const Icon(Icons.person_outline, color: Colors.blue),
                     const SizedBox(width: 10),
-                    // BOOKING FOR (dynamic)
+                    // BOOKING FOR
                     Text(
                       appointment["bookingFor"]?.isNotEmpty == true
                           ? appointment["bookingFor"]
@@ -100,7 +101,7 @@ class PaymentSuccess extends StatelessWidget {
                   children: [
                     const Icon(Icons.attach_money, color: Colors.blue),
                     const SizedBox(width: 5),
-                    // AMOUNT (dynamic)
+                    // AMOUNT
                     Text(
                       "${appointment["amount"]}",
                       style: GoogleFonts.inter(fontSize: 15),
@@ -121,7 +122,7 @@ class PaymentSuccess extends StatelessWidget {
                     const Icon(Icons.calendar_month, color: Colors.blue),
                     const SizedBox(width: 10),
 
-                    // DATE (dynamic)
+                    // DATE
                     Text(
                       appointment["date"] ?? "--",
                       style: GoogleFonts.inter(fontSize: 15),
@@ -134,7 +135,7 @@ class PaymentSuccess extends StatelessWidget {
                     const Icon(Icons.access_time, color: Colors.blue),
                     const SizedBox(width: 5),
 
-                    // TIME (dynamic)
+                    // TIME
                     Text(
                       appointment["time"] ?? "--",
                       style: GoogleFonts.inter(fontSize: 15),
@@ -173,18 +174,13 @@ class PaymentSuccess extends StatelessWidget {
 
             TextButton(
               onPressed: () {
-                Navigator.pop(context);
-                Navigator.pop(context);
-                Navigator.pop(context);
-                Navigator.pop(context);
-                Navigator.pop(context);
-                Navigator.pop(context);
+                Navigator.popUntil(context, (route) => route.isFirst);
               },
               child: Text(
                 "Go to Home",
                 style: GoogleFonts.inter(
                   fontSize: 15,
-                  color: Color(0xFF0A74FF),
+                  color: const Color(0xFF0A74FF),
                   fontWeight: FontWeight.w600,
                 ),
               ),

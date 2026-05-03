@@ -1,27 +1,35 @@
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:swiftcare/screens/onboarding/auth/patient-line/location/profile/tabs/home-tab/level-1/add-review/add_review.dart';
 import 'package:swiftcare/screens/onboarding/auth/patient-line/location/profile/tabs/home-tab/level-1/level-2/book_appointment.dart';
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:swiftcare/models/doctor_model.dart';
+import 'package:swiftcare/models/review_model.dart';
+import 'package:swiftcare/services/colors.dart';
 import 'package:swiftcare/services/helper_functions.dart';
 import 'package:swiftcare/widgets/category_bars.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:swiftcare/services/colors.dart';
-import 'package:flutter/material.dart';
 import 'package:swiftcare/widgets/favorite_heart.dart';
+import 'package:swiftcare/services/shared_resource.dart';
+import 'package:swiftcare/utils/app_config.dart';
+import 'package:swiftcare/widgets/map_preview.dart';
 import 'package:uicons/uicons.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:collection/collection.dart';
 
 class DoctorDetails extends StatelessWidget {
-  final Map<String, dynamic> doc;
+  final Doctor doctor;
 
-  const DoctorDetails({super.key, required this.doc});
+  const DoctorDetails({super.key, required this.doctor});
 
   @override
   Widget build(BuildContext context) {
-    Future<List<dynamic>> docReviews = HelperFunctions().getdoctorReviews(
-      doc["_id"],
+    Future<List<Review>> docReviews = HelperFunctions().getdoctorReviews(
+      doctor.id,
     );
-    double lng = doc["location"]["coordinates"][0];
-    double lat = doc["location"]["coordinates"][1];
+    double lng = doctor.location.longitude;
+    double lat = doctor.location.latitude;
+
+    String imagePath = doctor.image;
+    String imageUrl = AppConfig.getImageUrl(imagePath);
 
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
@@ -95,7 +103,7 @@ class DoctorDetails extends StatelessWidget {
                         width: 1.1,
                       ),
                     ),
-                    child: FavoriteHeart(doctorId: doc["_id"]),
+                    child: FavoriteHeart(doctorId: doctor.id),
                   ),
                 ),
               ],
@@ -104,14 +112,27 @@ class DoctorDetails extends StatelessWidget {
         ),
       ),
 
-      body: FutureBuilder(
+      body: FutureBuilder<List<Review>>(
         future: docReviews,
         builder: (context, snapshot) {
-          if (!snapshot.hasData) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          List<dynamic> reviews = snapshot.data!;
+          if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                "Error loading reviews: ${snapshot.error}",
+                style: GoogleFonts.poppins(color: Colors.red, fontSize: 14),
+              ),
+            );
+          }
+
+          if (!snapshot.hasData) {
+            return const SizedBox.shrink();
+          }
+
+          List<Review> reviews = snapshot.data ?? [];
 
           return SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 25),
@@ -125,16 +146,30 @@ class DoctorDetails extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // PHOTO
-                    Container(
-                      height: 80,
-                      width: 80,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        image: DecorationImage(
-                          image: AssetImage(doc["image"]),
-                          fit: BoxFit.cover,
-                        ),
-                      ),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(40),
+                      child: imagePath.startsWith('assets')
+                          ? Image.asset(
+                              imagePath,
+                              height: 80,
+                              width: 80,
+                              fit: BoxFit.cover,
+                            )
+                          : FadeInImage.assetNetwork(
+                              placeholder: 'assets/images/Jane.jpg',
+                              image: imageUrl,
+                              height: 80,
+                              width: 80,
+                              fit: BoxFit.cover,
+                              imageErrorBuilder: (context, error, stackTrace) {
+                                return Image.asset(
+                                  'assets/images/Jane.jpg',
+                                  height: 80,
+                                  width: 80,
+                                  fit: BoxFit.cover,
+                                );
+                              },
+                            ),
                     ),
                     const SizedBox(width: 14),
 
@@ -144,7 +179,7 @@ class DoctorDetails extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            doc["name"],
+                            doctor.name,
                             style: GoogleFonts.poppins(
                               fontSize: 17,
                               fontWeight: FontWeight.w700,
@@ -153,7 +188,7 @@ class DoctorDetails extends StatelessWidget {
                           const SizedBox(height: 6),
 
                           Text(
-                            doc["specialization"],
+                            doctor.specialization,
                             style: GoogleFonts.poppins(
                               fontSize: 13,
                               color: Colors.black54,
@@ -163,7 +198,7 @@ class DoctorDetails extends StatelessWidget {
                           const SizedBox(height: 6),
                           Row(
                             children: [
-                              Icon(
+                              const Icon(
                                 Icons.location_on,
                                 color: AppColors.primaryColor,
                                 size: 16,
@@ -171,9 +206,7 @@ class DoctorDetails extends StatelessWidget {
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
-                                  doc["location"] is Map
-                                      ? (doc["location"]["label"] ?? "")
-                                      : doc["location"].toString(),
+                                  doctor.location.label,
                                   style: GoogleFonts.poppins(
                                     fontSize: 12,
                                     color: Colors.black54,
@@ -197,14 +230,14 @@ class DoctorDetails extends StatelessWidget {
                   children: [
                     Expanded(
                       child: CategoryBar(
-                        name: doc["patients"].toString(),
+                        name: doctor.patients.toString(),
                         iconPath: "images/patients.png",
                         subtitle: "Patients",
                       ),
                     ),
                     Expanded(
                       child: CategoryBar(
-                        name: doc["experience"].toString(),
+                        name: doctor.experience.toString(),
                         iconPath: "images/briefcase.png",
                         subtitle: "Years Exp.",
                       ),
@@ -214,7 +247,7 @@ class DoctorDetails extends StatelessWidget {
                         name: reviews.isEmpty
                             ? "-"
                             : HelperFunctions()
-                                  .calculateRating(doc["_id"])
+                                  .calculateRating(doctor.id)
                                   .toStringAsFixed(1),
                         iconPath: "images/star.png",
                         subtitle: "Rating",
@@ -242,7 +275,7 @@ class DoctorDetails extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  doc["about"],
+                  doctor.about,
                   style: GoogleFonts.poppins(
                     fontSize: 14,
                     color: Colors.black87,
@@ -299,19 +332,19 @@ class DoctorDetails extends StatelessWidget {
                       size: 20,
                     ),
                     const SizedBox(width: 6),
-                    GestureDetector(
-                      onTap: () async {
-                        final Uri googleMapUrl = Uri.parse(
-                          "https://www.google.com/maps/search/?api=1&query=$lat,$lng",
-                        );
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () async {
+                          final Uri googleMapUrl = Uri.parse(
+                            "https://www.google.com/maps/search/?api=1&query=$lat,$lng",
+                          );
 
-                        if (await canLaunchUrl(googleMapUrl)) {
-                          await launchUrl(googleMapUrl);
-                        }
-                      },
-                      child: Expanded(
+                          if (await canLaunchUrl(googleMapUrl)) {
+                            await launchUrl(googleMapUrl);
+                          }
+                        },
                         child: Text(
-                          doc["location"]["label"],
+                          doctor.location.label,
                           style: GoogleFonts.poppins(fontSize: 14),
                         ),
                       ),
@@ -321,47 +354,8 @@ class DoctorDetails extends StatelessWidget {
 
                 const SizedBox(height: 12),
 
-                GestureDetector(
-                  onTap: () async {
-                    final Uri googleMapUrl = Uri.parse(
-                      "https://www.google.com/maps/search/?api=1&query=$lat,$lng",
-                    );
-
-                    if (await canLaunchUrl(googleMapUrl)) {
-                      await launchUrl(googleMapUrl);
-                    }
-                  },
-                  child: Container(
-                    height: 160,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.black12),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: GoogleMap(
-                        initialCameraPosition: CameraPosition(
-                          target: LatLng(lat, lng),
-                          zoom: 15,
-                        ),
-                        markers: {
-                          Marker(
-                            markerId: const MarkerId("doctorLocation"),
-                            position: LatLng(lat, lng),
-                          ),
-                        },
-                        zoomControlsEnabled: false,
-                        zoomGesturesEnabled: false,
-                        scrollGesturesEnabled: false,
-                        tiltGesturesEnabled: false,
-                        rotateGesturesEnabled: false,
-                        myLocationButtonEnabled: false,
-                      ),
-                    ),
-                  ),
-                ),
-
+                MapPreview(lat: lat, lng: lng),
+                
                 const SizedBox(height: 24),
 
                 // ------------------- REVIEWS -------------------
@@ -380,7 +374,8 @@ class DoctorDetails extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => AddDoctorReview(doctor: doc),
+                            builder: (context) =>
+                                AddDoctorReview(doctor: doctor),
                           ),
                         );
                       },
@@ -420,7 +415,7 @@ class DoctorDetails extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => BookAppointment(doc: doc),
+                builder: (context) => BookAppointment(doctor: doctor),
               ),
             );
           },
@@ -441,11 +436,10 @@ class DoctorDetails extends StatelessWidget {
   // 1. BUILD DYNAMIC WORKING HOURS
   // =============================================================
   List<Widget> _buildDynamicWorkingHours() {
-    List<String> days = List<String>.from(doc["availableDays"]);
-    List<String> hours = List<String>.from(doc["availableHours"]);
+    List<String> days = doctor.availableDays;
+    List<String> hours = doctor.availableHours;
 
     List<Widget> widgets = [];
-
     int count = days.length;
 
     for (int i = 0; i < count; i++) {
@@ -475,13 +469,20 @@ class DoctorDetails extends StatelessWidget {
   // =============================================================
   // 2. DYNAMIC REVIEW CARD
   // =============================================================
-  Widget _buildReviewCard(dynamic r) {
+  Widget _buildReviewCard(Review r) {
+    final patient = SharedResources.patients.value.firstWhereOrNull(
+      (p) => p.id == r.patientId,
+    );
+    final String pName = patient?.name ?? "Anonymous Patient";
+    final String pImage = patient?.image ?? "";
+    final String pImageUrl = AppConfig.getImageUrl(pImage);
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.black12),
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -489,28 +490,43 @@ class DoctorDetails extends StatelessWidget {
           Row(
             children: [
               CircleAvatar(
-                backgroundColor: Colors.grey[300],
+                backgroundColor: Colors.grey[200],
                 radius: 24,
-                child: Icon(Icons.person),
+                child: ClipOval(
+                  child: pImage.isNotEmpty
+                      ? FadeInImage.assetNetwork(
+                          placeholder: 'assets/images/Jane.jpg',
+                          image: pImageUrl,
+                          width: 48,
+                          height: 48,
+                          fit: BoxFit.cover,
+                          imageErrorBuilder: (_, __, ___) =>
+                              const Icon(Icons.person, color: Colors.grey),
+                        )
+                      : const Icon(Icons.person, color: Colors.grey),
+                ),
               ),
               const SizedBox(width: 12),
 
               // Patient Name
               Expanded(
                 child: Text(
-                  "Anonymous Patient",
+                  pName,
                   style: GoogleFonts.poppins(
                     fontWeight: FontWeight.w600,
-                    fontSize: 16,
+                    fontSize: 14,
                   ),
                 ),
               ),
 
-              Icon(Icons.star, color: Colors.amber, size: 20),
+              const Icon(Icons.star, color: Colors.amber, size: 16),
               const SizedBox(width: 4),
               Text(
-                r["rating"].toString(),
-                style: GoogleFonts.poppins(fontSize: 14),
+                r.rating.toString(),
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
@@ -518,7 +534,7 @@ class DoctorDetails extends StatelessWidget {
           const SizedBox(height: 8),
 
           Text(
-            r["comment"],
+            r.comment,
             style: GoogleFonts.poppins(color: Colors.black87, fontSize: 14),
           ),
         ],

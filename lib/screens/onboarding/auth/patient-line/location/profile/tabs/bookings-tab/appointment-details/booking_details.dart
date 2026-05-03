@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:swiftcare/models/appointment_model.dart';
+import 'package:swiftcare/models/doctor_model.dart';
 import 'package:swiftcare/screens/onboarding/auth/patient-line/location/profile/tabs/bookings-tab/appointment-details/queue-tracking/live_queue.dart';
 import 'package:swiftcare/screens/onboarding/auth/patient-line/location/profile/tabs/home-tab/level-1/doctor_detail.dart';
 import 'package:swiftcare/services/colors.dart';
 import 'package:swiftcare/services/helper_functions.dart';
+import 'package:swiftcare/utils/app_config.dart';
 import 'package:swiftcare/widgets/app_bar.dart';
 
 class AppointmentDetails extends StatelessWidget {
-  final dynamic appointment;
-  final Map<String, dynamic> doctor;
+  final Appointment appointment;
+  final Doctor doctor;
+
   const AppointmentDetails({
     super.key,
     required this.appointment,
@@ -18,18 +22,19 @@ class AppointmentDetails extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const primary = AppColors.primaryColor;
-    final double reviews = HelperFunctions().reviewsNumber(doctor['_id']);
-    final double rating = reviews == 0
-        ? 0
-        : HelperFunctions().calculateRating(doctor['_id']) / reviews;
+    final double reviews = HelperFunctions().reviewsNumber(doctor.id);
+    final double rating = HelperFunctions().calculateRating(doctor.id);
+
+    String imagePath = doctor.image;
+    String imageUrl = AppConfig.getImageUrl(imagePath);
 
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
 
-      appBar: CustomAppBar(title: "Appointment Detail", color: true),
+      appBar: const CustomAppBar(title: "Appointment Detail", color: true),
 
       body: Container(
-        padding: EdgeInsets.symmetric(horizontal: 15),
+        padding: const EdgeInsets.symmetric(horizontal: 15),
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -57,7 +62,31 @@ class AppointmentDetails extends StatelessWidget {
                       children: [
                         CircleAvatar(
                           radius: 45,
-                          backgroundImage: AssetImage("assets/images/Jane.jpg"),
+                          backgroundColor: Colors.grey[200],
+                          child: ClipOval(
+                            child: imagePath.startsWith('assets')
+                                ? Image.asset(
+                                    imagePath,
+                                    width: 90,
+                                    height: 90,
+                                    fit: BoxFit.cover,
+                                  )
+                                : FadeInImage.assetNetwork(
+                                    placeholder: 'assets/images/Jane.jpg',
+                                    image: imageUrl,
+                                    width: 90,
+                                    height: 90,
+                                    fit: BoxFit.cover,
+                                    imageErrorBuilder: (context, error, stackTrace) {
+                                      return Image.asset(
+                                        'assets/images/Jane.jpg',
+                                        width: 90,
+                                        height: 90,
+                                        fit: BoxFit.cover,
+                                      );
+                                    },
+                                  ),
+                          ),
                         ),
                         Positioned(
                           right: 2,
@@ -77,7 +106,7 @@ class AppointmentDetails extends StatelessWidget {
                     const SizedBox(height: 12),
 
                     Text(
-                      doctor['name'],
+                      doctor.name,
                       style: GoogleFonts.poppins(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -87,7 +116,7 @@ class AppointmentDetails extends StatelessWidget {
                     const SizedBox(height: 4),
 
                     Text(
-                      doctor['specialization'],
+                      doctor.specialization,
                       style: GoogleFonts.poppins(
                         fontSize: 13,
                         color: Colors.grey,
@@ -102,7 +131,7 @@ class AppointmentDetails extends StatelessWidget {
                         const Icon(Icons.star, color: Colors.amber, size: 18),
                         const SizedBox(width: 4),
                         Text(
-                          "$rating ($reviews+ reviews)",
+                          "${rating.toStringAsFixed(1)} (${reviews.toInt()}+ reviews)",
                           style: GoogleFonts.poppins(
                             fontSize: 13,
                             color: Colors.grey.shade700,
@@ -131,7 +160,7 @@ class AppointmentDetails extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => DoctorDetails(doc: doctor),
+                              builder: (context) => DoctorDetails(doctor: doctor),
                             ),
                           );
                         },
@@ -182,8 +211,7 @@ class AppointmentDetails extends StatelessWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              // "Oct 24, 2023 • 10:30 AM",
-                              "${appointment['date']} • ${appointment['time']}",
+                              "${appointment.date} • ${appointment.time}",
                               style: GoogleFonts.poppins(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -214,8 +242,7 @@ class AppointmentDetails extends StatelessWidget {
                             ),
                             const SizedBox(height: 3),
                             Text(
-                              // "${appointment['_id']}",
-                              "SC-438472",
+                               appointment.id.length > 8 ? "SC-${appointment.id.substring(appointment.id.length - 6).toUpperCase()}" : "SC-${appointment.id.toUpperCase()}",
                               style: GoogleFonts.poppins(
                                 fontWeight: FontWeight.w600,
                               ),
@@ -289,7 +316,7 @@ class AppointmentDetails extends StatelessWidget {
                     const SizedBox(height: 8),
 
                     Text(
-                      "You are currently #6 in the queue.\nEstimated wait: 15 mins.",
+                      "You are currently in the queue.\nEstimated wait: 15 mins.",
                       textAlign: TextAlign.center,
                       style: GoogleFonts.poppins(
                         fontSize: 13,
@@ -322,9 +349,9 @@ class AppointmentDetails extends StatelessWidget {
                             context,
                             MaterialPageRoute(
                               builder: (_) => LiveQueue(
-                                doc: doctor,
-                                shiftId: appointment["shiftId"],
-                                queueNumber: appointment["queueNumber"],
+                                doctor: doctor,
+                                shiftId: appointment.shiftId ?? "default",
+                                queueNumber: appointment.queueNumber ?? 1,
                               ),
                             ),
                           );

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:swiftcare/models/appointment_model.dart';
+import 'package:swiftcare/models/patient_model.dart';
 import 'package:swiftcare/services/colors.dart';
 import 'package:swiftcare/services/shared_resource.dart';
 
@@ -99,27 +101,19 @@ class _PatientsScreenState extends State<PatientsScreen> {
                   builder: (context, userData, child) {
                     String doctorId = userData["_id"] ?? "";
 
-                    return ValueListenableBuilder<List<dynamic>>(
+                    return ValueListenableBuilder<List<Appointment>>(
                       valueListenable: SharedResources.appointments,
                       builder: (context, appointments, child) {
                         // Filter for this doctor
-                        List<dynamic> docAppts = appointments.where((a) {
-                          return a["doctorId"] == doctorId ||
-                              (a["doctor"] != null &&
-                                  a["doctor"]["_id"] == doctorId);
+                        List<Appointment> docAppts = appointments.where((a) {
+                          return a.doctorId == doctorId;
                         }).toList();
 
-                        Map<String, dynamic>? getPatientInfo(dynamic appt) {
-                          if (appt == null) return null;
-                          if (appt["patient"] != null && appt["patient"] is Map) {
-                            return appt["patient"];
-                          }
-                          String? pId = appt["patientId"];
-                          if (pId != null) {
-                            try {
-                              return SharedResources.patients.value.firstWhere((p) => p["_id"] == pId);
-                            } catch (_) {}
-                          }
+                        Patient? getPatientInfo(Appointment appt) {
+                          String pId = appt.patientId;
+                          try {
+                            return SharedResources.patients.value.firstWhere((p) => p.id == pId);
+                          } catch (_) {}
                           return null;
                         }
 
@@ -130,11 +124,11 @@ class _PatientsScreenState extends State<PatientsScreen> {
                         for (var appt in docAppts) {
                           var pInfo = getPatientInfo(appt);
                           if (pInfo != null) {
-                            String pId = pInfo["_id"]?.toString() ?? "unknown";
+                            String pId = pInfo.id;
                             if (!seenIds.contains(pId)) {
                               seenIds.add(pId);
 
-                              String pName = pInfo["name"] ?? "Unknown Patient";
+                              String pName = pInfo.name;
                               if (searchQuery.isNotEmpty &&
                                   !pName.toLowerCase().contains(searchQuery)) {
                                 continue;
@@ -146,17 +140,12 @@ class _PatientsScreenState extends State<PatientsScreen> {
                                     ? "#${pId.substring(pId.length - 4)}"
                                     : "#$pId",
                                 "ageGender":
-                                    "${pInfo["age"] ?? "--"}y • ${pInfo["gender"] ?? "Unknown"}",
+                                    "${pInfo.age ?? "--"}y • ${pInfo.gender ?? "Unknown"}",
                                 "lastVisit":
-                                    appt["date"] ??
-                                    appt["createdAt"] ??
-                                    "Recent",
+                                    appt.date,
                                 "note":
-                                    appt["reason"] ??
-                                    appt["problem"] ??
-                                    appt["notes"] ??
-                                    "No specific notes provided.",
-                                "image": pInfo["image"],
+                                    appt.consultationNotes ?? "No specific notes provided.",
+                                "image": pInfo.image,
                               });
                             }
                           }

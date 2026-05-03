@@ -1,7 +1,13 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:swiftcare/models/appointment_model.dart';
+import 'package:swiftcare/models/doctor_model.dart';
+import 'package:swiftcare/models/patient_model.dart';
+import 'package:swiftcare/models/review_model.dart';
+import 'package:swiftcare/models/shift_model.dart';
 import 'package:swiftcare/services/helper_functions.dart';
 import 'package:swiftcare/services/shared_resource.dart';
+import 'package:swiftcare/utils/app_config.dart';
 
 class ApiService {
   // ---------------- SINGLETON ----------------
@@ -10,9 +16,7 @@ class ApiService {
   factory ApiService() => _instance;
 
   // ---------------- BACKEND LINK ----------------
-  // static const String baseUrl = 'https://8df2-2400-adc5-177-d700-4d56-c0c1-8394-d955.ngrok-free.app';
-  // static const String baseUrl = 'https://swiftcare.up.railway.app';
-  static const String baseUrl = 'http://localhost:3000';
+  static final String baseUrl = AppConfig.baseUrl;
 
   // ---------------- HTTP INTERCEPTOR ----------------
   Future<http.Response> request(
@@ -26,23 +30,27 @@ class ApiService {
 
     if (requiresAuth) {
       final token = await SharedResources().getAccessToken();
-      if (token != null) headers['Authorization'] = 'Bearer $token';
+      if (token != null) {
+        headers['Authorization'] = 'Bearer $token';
+      }
     }
 
     http.Response response;
     try {
       response = await _sendRequest(url, method, headers, body);
 
+      // Handle 401 Unauthorized - Refresh once
       if (requiresAuth && response.statusCode == 401) {
-        // Attempt token refresh
         final bool refreshed = await _refreshToken();
         if (refreshed) {
           final newToken = await SharedResources().getAccessToken();
-          if (newToken != null) headers['Authorization'] = 'Bearer $newToken';
-          response = await _sendRequest(url, method, headers, body);
+          if (newToken != null) {
+            headers['Authorization'] = 'Bearer $newToken';
+            response = await _sendRequest(url, method, headers, body);
+          }
         } else {
+          // If refresh fails, clear resources (log out)
           await SharedResources().clear();
-          // Ideally push to login screen, handled by UI listening to auth state or ValueListenableBuilder
         }
       }
       return response;
@@ -59,6 +67,8 @@ class ApiService {
         return await http.post(url, headers: headers, body: bodyStr);
       case 'PUT':
         return await http.put(url, headers: headers, body: bodyStr);
+      case 'PATCH':
+        return await http.patch(url, headers: headers, body: bodyStr);
       case 'DELETE':
         return await http.delete(url, headers: headers, body: bodyStr);
       case 'GET':
@@ -72,16 +82,22 @@ class ApiService {
     if (refreshToken == null) return false;
 
     try {
+      // Playbook: POST /auth/refresh - Token from header or cookie
       final res = await http.post(
         Uri.parse('$baseUrl/auth/refresh'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'refreshToken': refreshToken}),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $refreshToken', // Playbook header option
+        },
       );
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         if (data['accessToken'] != null) {
           await SharedResources().saveAccessToken(data['accessToken']);
+          if (data['refreshToken'] != null) {
+            await SharedResources().saveRefreshToken(data['refreshToken']);
+          }
           return true;
         }
       }
@@ -89,39 +105,67 @@ class ApiService {
     return false;
   }
 
-  // ---------------- FUNCTIONS ----------------
+  // ---------------- STANDARDIZED ERROR PARSER ----------------
+  String getErrorMessage(http.Response response) {
+    try {
+      final data = jsonDecode(response.body);
+      return data['error'] ?? data['message'] ?? 'An unknown error occurred (Status: ${response.statusCode})';
+    } catch (_) {
+      return 'Server error (Status: ${response.statusCode})';
+    }
+  }
+
+  // ---------------- CORE DATA SYNC ----------------
   Future<void> getDataFromApi() async {
-    final res = await request('/patients', requiresAuth: false);
-    if (res.statusCode == 200) SharedResources.patients.value = json.decode(res.body);
+    // All these are protected in BACKEND_MAP.md
+    final res = await request('/patients', requiresAuth: true);
+    if (res.statusCode == 200) {
+      final List<dynamic> data = json.decode(res.body);
+      SharedResources.patients.value = data.map((json) => Patient.fromJson(json)).toList();
+    }
 
-    final res2 = await request('/doctors', requiresAuth: false);
-    if (res2.statusCode == 200) SharedResources.doctors.value = json.decode(res2.body);
+    final res2 = await request('/doctors', requiresAuth: false); // Doctors are public
+    if (res2.statusCode == 200) {
+      final List<dynamic> data = json.decode(res2.body);
+      SharedResources.doctors.value = data.map((json) => Doctor.fromJson(json)).toList();
+    }
 
-    final res3 = await request('/appointments', requiresAuth: false);
-    if (res3.statusCode == 200) SharedResources.appointments.value = json.decode(res3.body);
+    final res3 = await request('/appointments', requiresAuth: true);
+    if (res3.statusCode == 200) {
+      // Playbook: paginated response for /appointments
+      final Map<String, dynamic> data = json.decode(res3.body);
+      final List<dynamic> items = data['items'] ?? [];
+      SharedResources.appointments.value = items.map((json) => Appointment.fromJson(json)).toList();
+    }
 
-    final res4 = await request('/reviews', requiresAuth: false);
-    if (res4.statusCode == 200) SharedResources.reviews.value = json.decode(res4.body);
+    final res4 = await request('/reviews', requiresAuth: false); // Reviews are public
+    if (res4.statusCode == 200) {
+      // Playbook: paginated response for /reviews
+      final Map<String, dynamic> data = json.decode(res4.body);
+      final List<dynamic> items = data['items'] ?? [];
+      SharedResources.reviews.value = items.map((json) => Review.fromJson(json)).toList();
+    }
+
+    final res5 = await request('/shifts', requiresAuth: true);
+    if (res5.statusCode == 200) {
+      final dynamic data = json.decode(res5.body);
+      final List<dynamic> items = data is List
+          ? data
+          : (data is Map<String, dynamic> ? (data['items'] ?? []) : []);
+      SharedResources.shifts.value = items.map((json) => Shift.fromJson(json)).toList();
+    }
 
     HelperFunctions().getFavoriteDoctors();
   }
 
   Future<dynamic> getUserData() async {
-    String? userId = await SharedResources().getUserId();
-    String? userRole = await SharedResources().getUserRole();
     final userData = SharedResources.userData;
-
-    if (userId == null || userRole == null) {
-      throw Exception('User ID or Role not found');
-    }
     if (userData.value.isEmpty) {
-      final res = await request('/api/user/profile', method: 'POST', body: {
-        'userId': userId,
-        'role': userRole
-      }, requiresAuth: false);
+      // Playbook: POST /api/user/profile requires no body (identity from JWT)
+      final res = await request('/api/user/profile', method: 'POST', body: null, requiresAuth: true);
 
       if (res.statusCode != 200) {
-        throw Exception(jsonDecode(res.body)['error'] ?? 'Failed to get user data');
+        throw Exception(getErrorMessage(res));
       }
       SharedResources.userData.value = jsonDecode(res.body);
     }
@@ -132,7 +176,7 @@ class ApiService {
     required String name,
     required String phone,
     required String locationLabel,
-    required List<double> coordinates, // [lng, lat]
+    required List<double> coordinates,
     required String age,
     required String gender,
   }) async {
@@ -143,24 +187,31 @@ class ApiService {
       "phone": phone,
       "age": age,
       "gender": gender,
-      "location": {"label": locationLabel, "coordinates": coordinates},
+      "location": {
+        "label": locationLabel,
+        "geo": {
+          "type": "Point",
+          "coordinates": coordinates,
+        }
+      },
     };
 
-    final response = await request('/patients/$patientId', method: 'PUT', body: body, requiresAuth: false);
+    // Playbook: PUT /patients/:id is self/admin authorized
+    final response = await request('/patients/$patientId', method: 'PUT', body: body, requiresAuth: true);
     final data = jsonDecode(response.body);
 
     if (response.statusCode == 200) {
       SharedResources.userData.value = data;
-      final List<dynamic> current = List.from(SharedResources.patients.value);
-      final index = current.indexWhere((p) => p["_id"] == patientId);
-
+      // Sync local list
+      final current = List<Patient>.from(SharedResources.patients.value);
+      final index = current.indexWhere((p) => p.id == patientId);
       if (index != -1) {
-        current[index] = data;
+        current[index] = Patient.fromJson(data);
         SharedResources.patients.value = current;
       }
       return data;
     } else {
-      throw Exception(data["error"] ?? "Failed to update profile");
+      throw Exception(getErrorMessage(response));
     }
   }
 
@@ -171,7 +222,7 @@ class ApiService {
     }, requiresAuth: true);
     
     if (res.statusCode != 200) {
-      throw Exception(jsonDecode(res.body)['error'] ?? 'Failed to toggle favorite');
+      throw Exception(getErrorMessage(res));
     }
     await getDataFromApi();
   }
@@ -179,18 +230,51 @@ class ApiService {
   Future<bool> createAppointment(Map<String, dynamic> appointment) async {
     try {
       final response = await request('/appointments', method: 'POST', body: appointment, requiresAuth: true);
-      if (response.statusCode == 200 || response.statusCode == 201) return true;
-      return false;
+      return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
       return false;
     }
   }
 
+  Future<List<Shift>> getDoctorShifts(String doctorId) async {
+    final res = await request('/appointments/doctor/$doctorId', requiresAuth: true);
+    if (res.statusCode == 200) {
+      final dynamic data = json.decode(res.body);
+      final List<dynamic> items = data is List
+          ? data
+          : (data is Map<String, dynamic> ? (data['items'] ?? data['shifts'] ?? []) : []);
+      return items
+          .whereType<Map<String, dynamic>>()
+          .map(Shift.fromJson)
+          .toList();
+    }
+    return [];
+  }
+
+  Future<List<String>> getAvailableSlots({
+    required String doctorId,
+    required String date,
+    required String shiftId,
+  }) async {
+    final query =
+        '/appointments/available-slots?doctorId=$doctorId&date=$date&shiftId=$shiftId';
+    final res = await request(query, requiresAuth: true);
+    if (res.statusCode == 200) {
+      final dynamic data = json.decode(res.body);
+      final List<dynamic> slots = data is List
+          ? data
+          : (data is Map<String, dynamic>
+              ? (data['freeSlots'] ?? data['slots'] ?? [])
+              : []);
+      return slots.map((e) => e.toString()).toList();
+    }
+    return [];
+  }
+
   Future<bool> addReview(Map<String, dynamic> review) async {
     try {
-      final response = await request('/reviews', method: 'POST', body: review, requiresAuth: true);
-      if (response.statusCode == 200 || response.statusCode == 201) return true;
-      return false;
+      final response = await request('/reviews', method: 'POST', body: review, requiresAuth: false);
+      return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
       return false;
     }

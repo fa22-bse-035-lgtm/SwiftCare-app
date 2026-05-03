@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:collection/collection.dart';
+import 'package:swiftcare/models/appointment_model.dart';
+import 'package:swiftcare/models/patient_model.dart';
 import 'package:swiftcare/services/colors.dart';
 import 'package:swiftcare/services/shared_resource.dart';
+import 'package:swiftcare/utils/app_config.dart';
 
 class HomeTab extends StatelessWidget {
   const HomeTab({super.key});
@@ -20,45 +24,34 @@ class HomeTab extends StatelessWidget {
             String name = userData["name"] ?? "Doctor";
             String specialization = userData["specialization"] ?? "Specialist";
             String imagePath = userData["image"] ?? "images/Jane.jpg";
-            String imageUrl =
-                "http://swiftcare.up.railway.app/${imagePath.replaceAll("\\", "/")}";
+            String imageUrl = AppConfig.getImageUrl(imagePath);
             String todayDate = DateFormat('EEEE, MMM d').format(DateTime.now());
 
-            return ValueListenableBuilder<List<dynamic>>(
+            return ValueListenableBuilder<List<Appointment>>(
               valueListenable: SharedResources.appointments,
               builder: (context, appointments, child) {
                 String doctorId = userData["_id"] ?? "";
-                List<dynamic> doctorAppts = appointments.where((a) {
-                  return a["doctorId"] == doctorId ||
-                      (a["doctor"] != null && a["doctor"]["_id"] == doctorId);
+                List<Appointment> doctorAppts = appointments.where((a) {
+                  return a.doctorId == doctorId;
                 }).toList();
 
                 int totalToday = doctorAppts.length;
                 int completed =
-                    doctorAppts.where((a) => a["status"] == "completed").length;
+                    doctorAppts.where((a) => a.status.toLowerCase() == "completed").length;
                 int remaining = totalToday - completed;
 
-                Map<String, dynamic>? getPatientInfo(dynamic appt) {
-                  if (appt == null) return null;
-                  if (appt["patient"] != null && appt["patient"] is Map) {
-                    return appt["patient"];
-                  }
-                  String? pId = appt["patientId"];
-                  if (pId != null) {
-                    try {
-                      return SharedResources.patients.value
-                          .firstWhere((p) => p["_id"] == pId);
-                    } catch (_) {}
-                  }
-                  return null;
+                Patient? getPatientInfo(Appointment appt) {
+                  return SharedResources.patients.value
+                      .firstWhereOrNull((p) => p.id == appt.patientId);
                 }
 
-                Map<String, dynamic>? upcomingAppt;
-                Map<String, dynamic>? upcomingPatient;
+                Appointment? upcomingAppt;
+                Patient? upcomingPatient;
                 if (doctorAppts.isNotEmpty) {
-                  upcomingAppt = doctorAppts.firstWhere(
-                      (a) => a["status"] != "completed",
-                      orElse: () => doctorAppts.first);
+                  upcomingAppt = doctorAppts.firstWhereOrNull(
+                    (a) => a.status.toLowerCase() != "completed" && a.status.toLowerCase() != "cancelled"
+                  ) ?? doctorAppts.first;
+                  
                   upcomingPatient = getPatientInfo(upcomingAppt);
                 }
 
@@ -106,8 +99,8 @@ class HomeTab extends StatelessWidget {
                               color: Colors.grey.shade200,
                               shape: BoxShape.circle,
                             ),
-                            child: Stack(
-                              children: const [
+                            child: const Stack(
+                              children: [
                                 Icon(Icons.notifications_none),
                                 Positioned(
                                   right: 0,
@@ -245,7 +238,7 @@ class HomeTab extends StatelessWidget {
                       const SizedBox(height: 18),
 
                       /// UPCOMING PATIENT CARD
-                      if (upcomingAppt != null && upcomingAppt["status"] != "completed")
+                      if (upcomingAppt != null && upcomingAppt.status.toLowerCase() != "completed")
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
@@ -298,15 +291,14 @@ class HomeTab extends StatelessWidget {
                                             CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            upcomingPatient?["name"] ??
-                                                upcomingAppt["patientName"] ??
+                                            upcomingPatient?.name ??
                                                 "Unknown",
                                             style: GoogleFonts.poppins(
                                               fontWeight: FontWeight.w600,
                                             ),
                                           ),
                                           Text(
-                                            "Scheduled: ${upcomingAppt["time"] ?? "N/A"}",
+                                            "Scheduled: ${upcomingAppt.time}",
                                             style: GoogleFonts.poppins(
                                               fontSize: 13,
                                               color: Colors.grey,

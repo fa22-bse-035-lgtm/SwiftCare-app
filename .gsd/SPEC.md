@@ -37,6 +37,10 @@ SwiftCare is a Flutter-based mobile application. It aims to connect Clients/Pati
 2. **Logic Separation**: If state is absolutely required, strictly separate the UI from the logic (Business Logic/Functions) into separate files or clear architectural layers.
 3. **Lean Widgets**: No 'fat' widgets—keep `build` methods lean and modular.
 4. **Backend Sync**: Whenever working on any backend-related task or API integration, strictly consult `BACKEND_MAP.md` and `FRONTEND_API_PLAYBOOK.md` to understand the backend architecture and ensure full synchronization.
+5. **Continuous Improvement & Perfection**: The development process aims for architectural perfection. Every line of code, function, class, and data flow should be scrutinized for potential improvements in readability, performance, type safety, and maintainability. Refactoring is encouraged as long as it:
+    - **Never breaks existing functionality.**
+    - **Never alters the User Interface or visual experience.**
+    - **Enhances the underlying logic and system integrity.**
 
 ## Success Criteria
 - [ ] Flutter app securely authenticates both patient and doctor roles.
